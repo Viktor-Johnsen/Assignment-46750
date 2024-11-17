@@ -66,3 +66,24 @@ t0=2
 print(f'Average price in hour {t0} is {np.mean([lambda_DA[:,t0]]):.2f} DKK/MWh')
 print(f'Average balancing price in hour {t0} is {np.mean([lambda_B[:,t0]]):.2f} DKK/MWh')
 # Based on the expected DA v. Balancing price in a given hour, we choose to bid all-or-nothing in that hour
+
+import matplotlib.pyplot as plt
+
+fig, ax=plt.subplots(figsize=(6,4),dpi=500)
+ax.plot([np.mean([lambda_DA[:,t]]) for t in range(T)], label='$\overline{\lambda}^{DA}_t$')
+ax.plot([np.mean([lambda_B[:,t]]) for t in range(T)], label='$\overline{\lambda}^{B}_t$')
+ax2=ax.twinx()
+ax2.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
+
+lines, labels = ax.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax.legend(lines + lines2, labels + labels2, loc=0)
+
+ax.set_xlabel('Hour of the day [h]')
+ax.set_ylabel('Price [DKK/MWh]')
+ax2.set_ylabel('DA offer [MW]')
+
+plt.title('Mean DA and balancing prices')
+plt.show()
+
+print("Expected profit (Optimal objective):", optimal_objective)

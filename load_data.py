@@ -17,6 +17,6 @@ lambda_DA = df_spot[df_spot['PriceArea']=='DK2']['SpotPriceDKK'] # Spot price: D
 lambda_B = df_balancing[df_balancing['PriceArea']=='DK2']['ImbalancePriceDKK'] # Balancing price: DKK/MWh (mFRR, used as aFRR)
 
 lambda_RES = df_aFRR[df_aFRR['PriceArea']=='DK2']['aFRR_DownCapPriceDKK'] # aFRR capacity price: DKK/MW
-alpha_RES = df_aFRR_activation[df_aFRR_activation['PriceArea']=='DK2']['aFRR_DownActivated'] # aFRR down-regulation activation: MW
-alpha_RES = (alpha_RES > 0).astype(int) # Makes the activation binary
+gamma_RES = df_aFRR_activation[df_aFRR_activation['PriceArea']=='DK2']['aFRR_DownActivated'] # aFRR down-regulation activation: MW
+gamma_RES = (gamma_RES > 0).astype(int) # Makes the activation binary
 # "aFRR Downward regulation purchased (MW)" -- not used because we assume that they always buy
