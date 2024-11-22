@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from IPython.display import display
 
-from load_data import p_RT, lambda_DA, lambda_B, lambda_RES, alpha_RES
+from load_data import p_RT, lambda_DA, lambda_B, lambda_RES#, gamma_RES
 
 T=24 #hours that we offer in
 W=30 #scenarios/days, our training set
@@ -13,7 +13,6 @@ p_RT = p_RT.values[:W*T].reshape(W,T)
 lambda_B = lambda_B.values[:W*T].reshape(W,T)
 lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
 lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
-alpha_RES = alpha_RES.values[:W*T].reshape(W,T)
 
 TT=np.arange(T)
 WW=np.arange(W)
@@ -86,4 +85,13 @@ ax2.set_ylabel('DA offer [MW]')
 plt.title('Mean DA and balancing prices')
 plt.show()
 
+
+
+revenue_DA =  sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
+revenue_BAL = sum( sum(Delta_sol[w][:] * lambda_B[w,:] * pi[w] for w in WW) )
+
 print("Expected profit (Optimal objective):", optimal_objective)
+print('These are the expected revenue streams:')
+print(f'Day-ahead market: {revenue_DA:>42.2f} €')
+print(f'Revenue from balancing market: {revenue_BAL:>29.2f} €')
+print(f'Summing these together yields the expected profit: {revenue_DA+revenue_BAL:.2f}={optimal_objective:.2f}')
