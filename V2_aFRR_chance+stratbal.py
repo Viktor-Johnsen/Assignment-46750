@@ -27,18 +27,21 @@ obj = np.zeros(W)
 p_DAs = np.zeros((W,T))
 Deltas = np.zeros((W,T))
 
+Epsilon = 1-0.9 # Chance constraint minimum satisfaction
+
 #lambda_B[lambda_B <= 0] = 0 # Just used to check smth
 
 # gamma_RES = np.ones((W,T)) # Down-regulation activated in all hours
 # gamma_RES[lambda_B > lambda_DA]=0 # Down-regulation not activated in hours where balancing price is higher than DA price
 
 M = max( np.max(lambda_DA-lambda_B), abs(np.min(lambda_DA-lambda_B)) ) #np.max(lambda_DA-lambda_B)*7 # Used for McCormick relaxation
+M_chance = np.max(p_RT) # Used for chance constraint
 
 #2 Mathematical model
 model = gp.Model("V1")
 p_DA = model.addVars(T, lb=0, vtype=GRB.CONTINUOUS, name="p_DA")
 Delta_down = model.addMVar((W,T), lb=0, vtype=GRB.CONTINUOUS, name="Delta_down")
-# New variables
+# Variables
 p_RES = model.addVars(T, lb=0, vtype=GRB.CONTINUOUS, name="p_RES")
 a_RES = model.addMVar((W,T), lb=0, vtype=GRB.CONTINUOUS, name="a_RES")
 # Used to make strategic balancing price offer
@@ -48,18 +51,21 @@ beta_RES = model.addVars(T, lb=0, vtype=GRB.CONTINUOUS, name="beta_RES")
 g = model.addMVar((W,T), vtype=GRB.BINARY, name="g")
 phi = model.addMVar((W,T), lb=0, vtype=GRB.CONTINUOUS, name="phi")
 
+# NEW, used for chance constraint
+u = model.addMVar((W,T), vtype=GRB.BINARY, name="u") # New
+
 model.setObjective(gp.quicksum(pi[w]*
                                (p_DA[t]*lambda_DA[w,t] + 
-                                p_RES[t]*lambda_RES[w,t] - # New
-                                (Delta_down[w,t]+a_RES[w,t])*lambda_B[w,t]) # Changed
+                                p_RES[t]*lambda_RES[w,t] -
+                                (Delta_down[w,t]+a_RES[w,t])*lambda_B[w,t])
                                 for w in WW for t in TT), 
                                 GRB.MAXIMIZE)
 
 #1st stage constraints:
 model.addConstrs((p_DA[t] <= P_nom for t in TT), name="c_Nom")
 #2nd stage constraints:
-model.addConstrs((p_RT[w,t] >= p_DA[t] - Delta_down[w,t] - a_RES[w,t] for w in WW for t in TT), name="c_RT") # Changed
-model.addConstrs((             p_DA[t] - Delta_down[w,t] - a_RES[w,t] >= 0 for w in WW for t in TT), name="c_NonnegativePhysicalDelivery") # Changed
+model.addConstrs((p_RT[w,t] >= p_DA[t] - Delta_down[w,t] - a_RES[w,t] for w in WW for t in TT), name="c_RT") 
+model.addConstrs((             p_DA[t] - Delta_down[w,t] - a_RES[w,t] >= -M_chance*(1-u) for w in WW for t in TT), name="c_NonnegativePhysicalDelivery") # New relaxed using chance constraint
 
 #Strategic offer in the balancing market
     #What we would like to do:
@@ -76,7 +82,8 @@ model.addConstrs((lambda_DA[w,t] - lambda_B[w,t] <= alpha_RES[t] * (lambda_DA[w,
 # WHAT ABOUT THE T[:-1]??? -> I just set it to 0 as of right now.
 
 model.addConstrs((a_RES[w,t] <= (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) for w in WW for t in TT), name='c_McCormick_7b')
-model.addConstrs((a_RES[w,t] >= (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) for w in WW for t in TT), name='c_McCormick_7c')
+#model.addConstrs((a_RES[w,t] >= (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) for w in WW for t in TT), name='c_McCormick_7c')
+model.addConstrs((a_RES[w,t]-(phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) >= M_chance*(-1+u[w,t]) for w in WW for t in TT), name='c_McCormick_7c') # New relaxed using chance constraint
 model.addConstrs((-g[w,t]*M <= phi[w,t] for w in WW for t in TT), name='c_McCormick_7d_1')
 model.addConstrs((phi[w,t] <= g[w,t]*M for w in WW for t in TT), name='c_McCormick_7d_2')
 model.addConstrs((-(1-g[w,t])*M <= phi[w,t] - p_RES[t] for w in WW for t in TT), name='c_McCormick_7e_1')
@@ -84,6 +91,10 @@ model.addConstrs((phi[w,t] - p_RES[t] <= (1-g[w,t])*M  for w in WW for t in TT),
 
 # Without this constraint we just strategically set the balancing price offer so that we are not activated and then we are "free" to offer as much downward regulation as we want to because phi never interacts with a_RES which means that p_RES never interact with p_DA
 model.addConstrs((p_RES[t] <= p_DA[t] for t in TT), name="c_Nom_RES")
+
+# Chance constraint satisfaction
+# The constraint below also includes time out of the market in p90
+model.addConstr((gp.quicksum(u[w,t] for w in WW for t in TT)/(W*T)>=(1-Epsilon)), name='c_ChanceConstraint')
 
 #lambda_RES_offer = alpha_RES * (lambda_DA[w,t+1]-lambda_DA[w,t]) + lambda_DA[w,t] + beta_RES forall w,h\{T}
 
