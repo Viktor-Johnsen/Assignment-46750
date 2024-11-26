@@ -106,7 +106,6 @@ if model.status == GRB.OPTIMAL:
         # [print(Delta_down_sol[w,:].tolist()) for w in WW]
         # print()
         # [print(a_RES_sol[w,:].tolist()) for w in WW]
-        lambda_offer_RES = [alpha_RES[t].x * ( (lambda_DA[w,t+1] if t<T-1 else lambda_DA[w,t])-lambda_DA[w,t]) + lambda_DA[w,t] + beta_RES[t].x for w in WW for t in TT]
         #lambda_offer_RES_sol = [[lambda_offer_RES[w,t].x for t in TT] for w in WW]
         print('We strategically offer the balancing activation price as: ', )
         g_sol = np.array([[g[w,t].x for t in TT] for w in WW])
@@ -115,6 +114,8 @@ if model.status == GRB.OPTIMAL:
         # beta_RES_sol = np.array([[beta_RES[w,t].x for t in TT] for w in WW])
         alpha_RES_sol = np.array([alpha_RES[t].x for t in TT])
         beta_RES_sol = np.array([beta_RES[t].x for t in TT])
+        lambda_offer_RES = [[alpha_RES_sol[t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_RES_sol[t] for t in TT] for w in WW]
+
 
 else:
         print("Optimization was not successful")
@@ -134,6 +135,22 @@ print(f'aFRR capacity market (down): {revenue_RES:>31.2f} €')
 print(f'Money spent to buy el. back: {losses_ACT:>31.2f} €')
 print(f'Revenue from balancing market: {revenue_BAL:>29.2f} €')
 print(f'Summing these together yields the expected profit: {revenue_DA+revenue_RES+losses_ACT+revenue_BAL:.2f}={optimal_objective:.2f}')
+
+print(f'Such high balancing market offers allow us only to be activated this many times in each scenario: {np.sum( lambda_offer_RES <= lambda_B, axis=0)}')
+print(f'Instead of simply: {np.sum( lambda_DA > lambda_B, axis=0)}')
+
+print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
+print('This does not add up with the number of times that we enforce the activation, g:\n', np.sum( g_sol > 0, axis=0))
+print('Though the numbers for g match nicely with the auxiliary variable for activation, phi:\n', np.sum( phi_sol > 0, axis=0))
+print('Discrepancies can be explained by the number of times where phi > a:\n', np.sum( phi_sol > a_RES_sol, axis=0))
+print('These discrepancies between phi and a can be explained by the number of times where g=1 but there is no need for down-regulation, phi-condtional\n', np.sum( (phi_sol > 0) * (lambda_DA <= lambda_B), axis=0))
+
+print('In other words, changing the balancing activation offer price works, and the conditions are that there should be a need for down-regulation and the offer price should be smaller than or equal to that of the difference between DA and BAL:')
+print('This is the same as the number of times that we are activated (without equality), lambda_offer:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B > lambda_offer_RES), axis=0))
+print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
+#print('This is the same as the number of times that we are activated (with equality), lambda_OFFER:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B >= lambda_offer_RES), axis=0))
+print('Apart from a difference of \"1" in hour 9 for some reason')
+
 
 # Visualizations
 import matplotlib.pyplot as plt
