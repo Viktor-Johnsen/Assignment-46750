@@ -37,7 +37,7 @@ M = max( np.max(lambda_DA-lambda_B), abs(np.min(lambda_DA-lambda_B)) ) #np.max(l
 #2 Mathematical model
 model = gp.Model("V1")
 p_DA = model.addVars(T, lb=0, vtype=GRB.CONTINUOUS, name="p_DA")
-Delta_down = model.addMVar((W,T), lb=0, vtype=GRB.CONTINUOUS, name="Delta_down")
+Delta_down = model.addMVar((W,T), lb=0, ub=0.15, vtype=GRB.CONTINUOUS, name="Delta_down")
 # New variables
 p_RES = model.addVars(T, lb=0, vtype=GRB.CONTINUOUS, name="p_RES")
 a_RES = model.addMVar((W,T), lb=0, vtype=GRB.CONTINUOUS, name="a_RES")

@@ -65,7 +65,7 @@ model.setObjective(gp.quicksum(pi[w]*
 model.addConstrs((p_DA[t] <= P_nom for t in TT), name="c_Nom")
 #2nd stage constraints:
 model.addConstrs((p_RT[w,t] >= p_DA[t] - Delta_down[w,t] - a_RES[w,t] for w in WW for t in TT), name="c_RT") 
-model.addConstrs((             p_DA[t] - Delta_down[w,t] - a_RES[w,t] >= -M_chance*(1-u) for w in WW for t in TT), name="c_NonnegativePhysicalDelivery") # New relaxed using chance constraint
+model.addConstrs((             p_DA[t] - Delta_down[w,t] - a_RES[w,t] >= -M_chance*(1-u[w,t]) for w in WW for t in TT), name="c_NonnegativePhysicalDelivery") # New relaxed using chance constraint
 
 #Strategic offer in the balancing market
     #What we would like to do:

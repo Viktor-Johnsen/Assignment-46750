@@ -288,7 +288,7 @@ import seaborn as sns
 fig=plt.figure(figsize=(6,4),dpi=500)
 colors=['blue', 'orange']
 colors2=['purple', 'red']
-for i,beta in enumerate([0.0,0.1]):
+for i,beta in enumerate([0.0,0.2]):
       sns.histplot(Eprofs_w[f'{beta}'],
                    color=colors[i],
                    kde=False,
@@ -317,7 +317,7 @@ fig,ax = plt.subplots(figsize=(6,4),dpi=500)
 ax2=ax.twinx()
 
 markers=['s','x','*','d','p','+']
-for i,beta in enumerate(betas[[0,1,4,5]]):
+for i,beta in enumerate(betas[[0,2]]):
     ax.plot(TT, DA_offer[f'{beta}'], label=f'beta={beta}', marker=markers[i], color='tab:green')
     ax2.plot(TT, RES_offer[f'{beta}'], label=f'beta={beta}', marker=markers[i], color='tab:purple')
 

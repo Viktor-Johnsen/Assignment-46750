@@ -30,7 +30,7 @@ Deltas = np.zeros((W,T))
 #lambda_B[lambda_B <= 0] = 0 # Just used to check smth
 
 gamma_RES = np.ones((W,T)) # Down-regulation activated in all hours
-gamma_RES[lambda_B > lambda_DA]=0 # Down-regulation not activated in hours where balancing price is higher than DA price
+gamma_RES[lambda_B >= lambda_DA]=0 # Down-regulation not activated in hours where balancing price is higher than DA price
 
 #2 Mathematical model
 model = gp.Model("V1")
