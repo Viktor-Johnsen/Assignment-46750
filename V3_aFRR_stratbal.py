@@ -32,12 +32,13 @@ Deltas = np.zeros((W,T))
 # gamma_RES = np.ones((W,T)) # Down-regulation activated in all hours
 # gamma_RES[lambda_B > lambda_DA]=0 # Down-regulation not activated in hours where balancing price is higher than DA price
 
-M = max( np.max(lambda_DA-lambda_B), abs(np.min(lambda_DA-lambda_B)) ) #np.max(lambda_DA-lambda_B)*7 # Used for McCormick relaxation
+M = max( np.max(lambda_DA-lambda_B), abs(np.min(lambda_DA-lambda_B)) ) + 936 #np.max(lambda_DA-lambda_B)*7 # Used for McCormick relaxation
+# M = max( np.max(lambda_DA-lambda_B), abs(np.min(lambda_DA-lambda_B)) ) + 900 # -> still activated in (w,t)=(15,10)
 
 #2 Mathematical model
 model = gp.Model("V1")
 p_DA = model.addVars(T, lb=0, vtype=GRB.CONTINUOUS, name="p_DA")
-Delta_down = model.addMVar((W,T), lb=0, ub=0.15, vtype=GRB.CONTINUOUS, name="Delta_down")
+Delta_down = model.addMVar((W,T), lb=0, vtype=GRB.CONTINUOUS, name="Delta_down")
 # New variables
 p_RES = model.addVars(T, lb=0, vtype=GRB.CONTINUOUS, name="p_RES")
 a_RES = model.addMVar((W,T), lb=0, vtype=GRB.CONTINUOUS, name="a_RES")
@@ -70,6 +71,7 @@ model.addConstrs((             p_DA[t] - Delta_down[w,t] - a_RES[w,t] >= 0 for w
 
 # model.addConstrs((lambda_offer_RES[w,t] - M*(1-g[w,t]) <= lambda_DA[w,t] - lambda_B[w,t] for w in WW for t in TT), name='c_McCormick_7a_1')
 # model.addConstrs((lambda_DA[w,t] - lambda_B[w,t] <= lambda_offer_RES[w,t] + M*g[w,t] for w in WW for t in TT), name='c_McCormick_7a_2')
+
 model.addConstrs((alpha_RES[t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_RES[t] - M*(1-g[w,t]) <= lambda_DA[w,t] - lambda_B[w,t] for w in WW for t in TT), name='c_McCormick_7a_1')
 model.addConstrs((lambda_DA[w,t] - lambda_B[w,t] <= alpha_RES[t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_RES[t] + M*g[w,t] for w in WW for t in TT), name='c_McCormick_7a_2')
 

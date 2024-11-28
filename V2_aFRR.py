@@ -6,7 +6,7 @@ from IPython.display import display
 
 from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
 
-show_plots = False # Usedd to toggle between plotting and not plotting...
+show_plots = True # Usedd to toggle between plotting and not plotting...
 
 T=24 #hours that we offer in
 W=30 #scenarios/days, our training set

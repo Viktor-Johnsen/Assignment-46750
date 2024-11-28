@@ -66,6 +66,10 @@ print(f'Average price in hour {t0} is {np.mean([lambda_DA[:,t0]]):.2f} DKK/MWh')
 print(f'Average balancing price in hour {t0} is {np.mean([lambda_B[:,t0]]):.2f} DKK/MWh')
 # Based on the expected DA v. Balancing price in a given hour, we choose to bid all-or-nothing in that hour
 
+print('In hours of non-negative balancing prices, there is balance between pRT and pDA & Delta because we want to max out on our available power:')
+print(sum(p_RT[w,t] for t in TT for w in WW if lambda_B[w,t] >= 0))
+print(sum(p_DA_sol[t] + Delta_sol[w][t] for t in TT for w in WW if lambda_B[w,t] >= 0))
+
 import matplotlib.pyplot as plt
 
 fig, ax=plt.subplots(figsize=(6,4),dpi=500)
