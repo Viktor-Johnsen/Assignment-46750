@@ -34,6 +34,7 @@ Deltas = np.zeros((W,T))
 
 M = max( np.max(lambda_DA-lambda_B), abs(np.min(lambda_DA-lambda_B)) ) + 936 #np.max(lambda_DA-lambda_B)*7 # Used for McCormick relaxation
 lambda_offer_fix = 0#np.max(lambda_DA-lambda_B) # Only 1389.9 as opposed to 7458.3 above
+lambda_offer_RES = lambda_offer_fix
 
 alpha = 0.9 # Worried about the profits in the 10th percentile least favorable scenarios
 beta = 0 # Level of risk-averseness of wind farm owner
@@ -206,9 +207,9 @@ print('Discrepancies can be explained by the number of times where phi > a:\n', 
 print('These discrepancies between phi and a can be explained by the number of times where g=1 but there is no need for down-regulation, phi-condtional\n', np.sum( (phi_sol > 0) * (lambda_DA <= lambda_B), axis=0))
 
 print('In other words, changing the balancing activation offer price works, and the conditions are that there should be a need for down-regulation and the offer price should be smaller than or equal to that of the difference between DA and BAL:')
-print('This is the same as the number of times that we are activated (without equality), lambda_offer:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B > lambda_offer_RES), axis=0))
+#print('This is the same as the number of times that we are activated (without equality), lambda_offer:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B > lambda_offer_RES), axis=0))
 print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
-#print('This is the same as the number of times that we are activated (with equality), lambda_OFFER:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B >= lambda_offer_RES), axis=0))
+print('This is the same as the number of times that we are activated (with equality), lambda_OFFER:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B >= lambda_offer_RES), axis=0))
 print('Apart from a difference of \"1" in hour 9 for some reason')
 
 
