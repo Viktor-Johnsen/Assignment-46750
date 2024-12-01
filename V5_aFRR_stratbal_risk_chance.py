@@ -39,7 +39,10 @@ beta = 0 # Level of risk-averseness of wind farm owner
 
 # initiate dictionaries used to save the results for different levels of risk
 # betas = np.round( np.linspace(0,1,11), 2)
-betas = np.round( np.linspace(0,0.8,9), 2) # Selected range
+betas = np.array([0,0.1,0.8]) # np.round( np.linspace(0,0.8,9), 2) # Selected range
+
+M_P90 = 1*10**5
+epsilon = 0.1 # Because, P90...
 
 DA_offer = {f'{beta}': float for beta in betas}
 RES_offer = {f'{beta}': float for beta in betas}
@@ -68,6 +71,9 @@ for beta in betas:
     # Used to introduce risk framework: CVaR
     zeta = model.addVar(lb=-GRB.INFINITY, vtype=GRB.CONTINUOUS, name="zeta") # "Value-at-Risk"
     eta = model.addVars(W, lb=0, vtype=GRB.CONTINUOUS, name="eta") # Expected profit of each scenario "at-risk"
+
+    # Used to introduce joint-chance constrained programming (P90-rule)
+    u = model.addMVar((W,T), vtype=GRB.BINARY, name="u")
 
     model.setObjective( (1-beta) * gp.quicksum(pi[w]*
                                 (p_DA[t]*lambda_DA[w,t] + 
@@ -98,7 +104,9 @@ for beta in betas:
     # WHAT ABOUT THE T[:-1]??? -> I just set it to 0 as of right now.
 
     model.addConstrs((a_RES[w,t] <= (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) for w in WW for t in TT), name='c_McCormick_7b')
-    model.addConstrs((a_RES[w,t] >= (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) for w in WW for t in TT), name='c_McCormick_7c')
+    # McCormick_7c is changed
+    model.addConstrs((a_RES[w,t] - (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) >= (u[w,t]-1)*M_P90 for w in WW for t in TT), name='c_McCormick_7c')
+    # 
     model.addConstrs((-g[w,t]*M <= phi[w,t] for w in WW for t in TT), name='c_McCormick_7d_1')
     model.addConstrs((phi[w,t] <= g[w,t]*M for w in WW for t in TT), name='c_McCormick_7d_2')
     model.addConstrs((-(1-g[w,t])*M <= phi[w,t] - p_RES[t] for w in WW for t in TT), name='c_McCormick_7e_1')
@@ -114,6 +122,10 @@ for beta in betas:
                                 for t in TT )
                                 + zeta - eta[w] <= 0 for w in WW), name="c_CVaR")
 
+    # P90-constraint - slightly modified to avoid "violating" the agreement with TSO in hours where we are not even activated
+    model.addConstr( gp.quicksum(u[w,t] for w in WW for t in TT) / (T*W)
+                    >= (1-epsilon) * (gp.quicksum(g[w,t] for w in WW for t in TT) / (T*W)) )
+    model.addConstrs(( u[w,t] <= g[w,t] for w in WW for t in TT), name="P90-auxiliary")
 
     model.optimize()
 
@@ -163,6 +175,8 @@ for beta in betas:
         #print(f'zB=\n{zB_sol[:10]}\n{zB_sol[10:]}')
         DA_offer[f'{beta}'] = p_DA_sol
         RES_offer[f'{beta}'] = p_RES_sol
+
+        u_sol = np.array([[u[w,t].x for t in TT] for w in WW])
 
     else:
             print("Optimization was not successful")
@@ -327,7 +341,7 @@ plt.show()
 fig=plt.figure(figsize=(6,4),dpi=500)
 colors=['blue', 'orange']
 colors2=['purple', 'red']
-for i,beta in enumerate([0.1,0.5]):
+for i,beta in enumerate([0.1,0.8]):
       sns.histplot(Eprofs_w[f'{beta}'],
                    color=colors[i],
                    kde=False,
@@ -356,6 +370,7 @@ fig,ax = plt.subplots(figsize=(6,4),dpi=500)
 ax2=ax.twinx()
 
 cols = ['b', 'r']
+
 markers=['s','x','*','d','p','+']
 for i,beta in enumerate(betas[[0,1,-1]]):
     ax.plot(TT, DA_offer[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[0])
@@ -376,51 +391,10 @@ ax2.set_ylabel('RES offer $-$ Power [MW]')
 
 lines,labels = ax.get_legend_handles_labels()
 lines2,labels2= ax2.get_legend_handles_labels()
-
-### Used to explain the behaviour - can be removed when only showing the decisions
-ax3 = ax.twinx()
-ax3.plot([np.mean(lambda_DA[:,t]) + np.mean(lambda_RES[:,t]) - np.mean(lambda_B[:,t]) for t in range(T)], label='E[P] 1MW DA', color='k')
-ax3.axhline(y=0, alpha=.5, color='black')
-ax3.spines.right.set_position(("axes", 1.12))
-lines3,labels3 = ax3.get_legend_handles_labels()
-plt.legend(lines+lines2+lines3,labels+labels2+labels3,loc=0)
+plt.legend(lines+lines2,labels+labels2,loc=0)
 plt.show()
-### 
-
-# plt.legend(lines+lines2,labels+labels2,loc=0)
-# plt.show()
 
 print('##############\nScript is done\n##############')
+print(np.sum(g_sol))
+print(np.sum(u_sol))
 
-# Understanding the spread within our scenarios
-fig, ax = plt.subplots(2,2,figsize=(8,6))
-ax = ax.flatten()
-dict_params = {'$\lambda^{DA}$': lambda_DA, '$\lambda^{RES}$': lambda_RES, '$\lambda^{B}$':lambda_B, '$p^{RT}$':p_RT}
-for i,k in enumerate(dict_params.keys()):
-     ax[i].boxplot(dict_params[k])
-     ax[i].set_title(k)
-     ax[i].tick_params('x',rotation=45)
-plt.tight_layout()
-plt.show()
-
-# Or simply all-in-one go:
-
-# np.median(np.array([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)]).reshape(T*W)) = 129
-# Since the median of the scenario-hour profits is only 129 and basically all points are close to 0 we can choose very low ylims
-'''
-plt.boxplot(np.array([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)]).reshape(T*W))
-plt.grid(True)
-plt.show()
-'''
-
-fig, ax = plt.subplots(2,1,figsize=(8,8))
-ax[0].boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)])
-ax[0].set_title('Boxplot for the scenarios in each hour of the profit made by 1 MW offer in DA')
-
-ax[1].boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)])
-ax[1].set_title('Smaller y-range')
-ax[1].set_ylim((-5*10**2,1*10**3))
-ax[1].axhline(y=0, color='r')
-
-plt.tight_layout()
-plt.show()
