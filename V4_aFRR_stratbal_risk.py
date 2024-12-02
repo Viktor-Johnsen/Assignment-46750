@@ -48,6 +48,8 @@ CVaR = {f'{beta}': float for beta in betas}
 VaR = {f'{beta}': float for beta in betas}
 Eprofs = {f'{beta}': float for beta in betas}
 Eprofs_w = {f'{beta}': np.array(float) for beta in betas}
+alpha_offer_RES = {f'{beta}': float for beta in betas}
+beta_offer_RES = {f'{beta}': float for beta in betas}
 
 for beta in betas: 
     #2 Mathematical model
@@ -163,9 +165,14 @@ for beta in betas:
         #print(f'zB=\n{zB_sol[:10]}\n{zB_sol[10:]}')
         DA_offer[f'{beta}'] = p_DA_sol
         RES_offer[f'{beta}'] = p_RES_sol
+        alpha_offer_RES[f'{beta}'] = alpha_RES_sol
+        beta_offer_RES[f'{beta}'] = beta_RES_sol
 
     else:
             print("Optimization was not successful")
+
+lambda_offer_RES_dict = {f'{beta}':[[alpha_offer_RES[f'{beta}'][t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_offer_RES[f'{beta}'][t] for w in WW] for t in TT] for beta in betas}
+
 #model.printStats()
 #display(P_RT_w)
 # print("Expected profit (Optimal objective):", optimal_objective)
@@ -269,26 +276,21 @@ import matplotlib.pyplot as plt
 # import matplotlib as mpl
 # mpl.rcParams.update(mpl.rcParamsDefault)
 
-fig = plt.figure(figsize=(6,4),dpi=500)
-for beta in betas:
-    plt.scatter(CVaR[f'{beta}'], Eprofs[f'{beta}'])
-points_to_plot = betas #[0.8,0.9]
-for beta in points_to_plot:
-    plt.annotate(f'beta={beta}', (CVaR[f'{beta}'], Eprofs[f'{beta}']))
-plt.xlabel('CVaR [€]')
-plt.ylabel('Expected profit [€]')
-#plt.legend()
-plt.show()
+beta_lists=[betas,betas[1:]]
 
-fig = plt.figure(figsize=(6,4),dpi=500)
-for beta in betas[1:]:
-    plt.scatter(CVaR[f'{beta}'], Eprofs[f'{beta}'])
-points_to_plot = betas #[0.8,0.9]
-for beta in points_to_plot:
-    plt.annotate(f'beta={beta}', (CVaR[f'{beta}'], Eprofs[f'{beta}']))
-plt.xlabel('CVaR [€]')
-plt.ylabel('Expected profit [€]')
-#plt.legend()
+fig, ax = plt.subplots(1,2, figsize=(14,5))
+ax = ax.flatten()
+for i,beta_list in enumerate(beta_lists):
+    for beta in beta_list:
+        ax[i].scatter(CVaR[f'{beta}'], Eprofs[f'{beta}'], s=45)
+    points_to_plot = beta_list #[0.8,0.9]
+    for beta in points_to_plot:
+        ax[i].annotate(f'beta={beta}', (CVaR[f'{beta}'], Eprofs[f'{beta}']), fontsize=13)
+    ax[i].set_xlabel('CVaR [€]')
+    ax[i].set_ylabel('Expected profit [€]')
+    #plt.legend()
+plt.tight_layout()
+plt.savefig('plots/V4/Step4_V4_Markowitzs', dpi=500, bbox_inches='tight')
 plt.show()
 
 import seaborn as sns
@@ -296,61 +298,45 @@ import seaborn as sns
 # plt.rc('text', usetex=True)
 # plt.rc('font', family='serif')
 
-fig=plt.figure(figsize=(6,4),dpi=500)
-colors=['blue', 'orange']
-colors2=['purple', 'red']
-for i,beta in enumerate([0.0,0.1]):
-      sns.histplot(Eprofs_w[f'{beta}'],
-                   color=colors[i],
-                   kde=False,
-                   label=f'β={beta}',
-                   alpha=.7)
-      plt.axvline(VaR[f'{beta}'],
-                  color=colors2[i],
-                  label=f'VaR, β={beta}',
-                  linestyle='--',
-                  linewidth=4
-                  )
-      plt.axvline(Eprofs[f'{beta}'],
-                  color=colors2[i],
-                  label=f'Expected profit, β={beta}',
-                  linestyle='-',
-                  linewidth=4
-                  )
-      
-plt.legend()
-plt.xlabel('Profit [€]')
-plt.ylabel(f'Frequency [out of {W}]')
-plt.title('Profit distributions and VaR')
+#####
+betas_hist=[[0.0,0.1],[0.0,0.8]]
+fig, ax = plt.subplots(1,2, figsize=(10,4))
+ax=ax.flatten()
+colors=['tab:blue', 'tab:orange']
+for k,beta_hist in enumerate(betas_hist):
+    if k == 1:
+        colors[1] = 'tab:olive'
+    for i,beta in enumerate(beta_hist):
+        sns.histplot(Eprofs_w[f'{beta}'],
+                    ax=ax[k],
+                    color=colors[i],
+                    kde=False,
+                    label=f'β={beta}',
+                    alpha=.9)
+        ax[k].axvline(VaR[f'{beta}'],
+                    color=colors[i],
+                    label=f'VaR, β={beta}',
+                    linestyle='--',
+                    linewidth=4,
+                    alpha=1-.1*i
+                    )
+        ax[k].axvline(Eprofs[f'{beta}'],
+                    color=colors[i],
+                    label=f'Expected profit, β={beta}',
+                    linestyle='-',
+                    linewidth=4,
+                    alpha=1-.1*i
+                    )
+        
+    ax[k].legend()
+    ax[k].set_xlabel('Expected profit [€]')
+    ax[k].set_ylabel(f'Frequency [out of {W}]')
+    # ax[k].set_title('Profit distributions and VaR')
+plt.tight_layout()
+plt.savefig('plots/V4/Step4_V4_profit_hists', dpi=500, bbox_inches='tight')
 plt.show()
+#####
 
-fig=plt.figure(figsize=(6,4),dpi=500)
-colors=['blue', 'orange']
-colors2=['purple', 'red']
-for i,beta in enumerate([0.1,0.5]):
-      sns.histplot(Eprofs_w[f'{beta}'],
-                   color=colors[i],
-                   kde=False,
-                   label=f'β={beta}',
-                   alpha=.7)
-      plt.axvline(VaR[f'{beta}'],
-                  color=colors2[i],
-                  label=f'VaR, β={beta}',
-                  linestyle='--',
-                  linewidth=4
-                  )
-      plt.axvline(Eprofs[f'{beta}'],
-                  color=colors2[i],
-                  label=f'Expected profit, β={beta}',
-                  linestyle='-',
-                  linewidth=4
-                  )
-      
-plt.legend()
-plt.xlabel('Profit [€]')
-plt.ylabel(f'Frequency [out of {W}]')
-plt.title('Profit distributions and VaR')
-plt.show()
 
 fig,ax = plt.subplots(figsize=(6,4),dpi=500)
 ax2=ax.twinx()
@@ -379,16 +365,55 @@ lines2,labels2= ax2.get_legend_handles_labels()
 
 ### Used to explain the behaviour - can be removed when only showing the decisions
 ax3 = ax.twinx()
-ax3.plot([np.mean(lambda_DA[:,t]) + np.mean(lambda_RES[:,t]) - np.mean(lambda_B[:,t]) for t in range(T)], label='E[P] 1MW DA', color='k')
-ax3.axhline(y=0, alpha=.5, color='black')
+ax3.plot([np.mean(lambda_DA[:,t]) + np.mean(lambda_RES[:,t]) - np.mean(lambda_B[:,t]) for t in range(T)], label='E[P] 1MW DA', color='k', alpha=.5)
+ax3.set_ylabel('Revenue - Expected profit of 1 MW DA offer [€]')
+ax3.axhline(y=0, alpha=1, color='k', linestyle='dashed')
 ax3.spines.right.set_position(("axes", 1.12))
 lines3,labels3 = ax3.get_legend_handles_labels()
 plt.legend(lines+lines2+lines3,labels+labels2+labels3,loc=0)
-plt.show()
 ### 
 
 # plt.legend(lines+lines2,labels+labels2,loc=0)
-# plt.show()
+plt.savefig('plots/V4/Step4_V4_decisions', dpi=500, bbox_inches='tight')
+plt.show()
+
+fig,ax = plt.subplots(figsize=(6,4),dpi=500)
+ax2=ax.twinx()
+cols = ['b', 'r']
+markers=['s','x','*','d','p','+']
+for i,beta in enumerate(betas[[0,1,-1]]):
+    ax.plot(TT, alpha_offer_RES[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[0])
+    ax2.plot(TT, beta_offer_RES[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[1], alpha=.5)
+
+ax.set_xlabel('Hour of the day [h]')
+ax2.spines['left'].set_color(cols[0])
+ax.tick_params(axis='y', colors=cols[0])
+ax.yaxis.label.set_color(cols[0])
+ax2.tick_params(axis='y', colors=cols[1])
+ax2.spines['right'].set_color(cols[1])
+ax2.yaxis.label.set_color(cols[1])
+ax.set_ylabel(r' $ \alpha^{RES}_t [-]$')
+ax2.set_ylabel(r' $ \beta^{RES}_t$ [€/MWh]')
+lines,labels = ax.get_legend_handles_labels()
+lines2,labels2= ax2.get_legend_handles_labels()
+plt.legend(lines+lines2,labels+labels2,loc=0)
+plt.savefig('plots/V4/Step4_V4_decisions_alphabeta_RES', dpi=500, bbox_inches='tight')
+plt.show()
+
+# Looking at their boxplots
+
+fig, ax = plt.subplots(1,2,figsize=(14,5))
+beta_vals = [0.0,0.8]
+ylims = (-2000,8000)
+colors=['tab:blue','tab:olive']
+for i in range(len(beta_vals)):
+    ax[i].boxplot(lambda_offer_RES_dict[f'{beta_vals[i]}'])
+    ax[i].set_xlabel('Time of day-1 [h]')
+    ax[i].set_ylabel('Strategic activation price offer [€/MWh] - ' + r'$\beta$' + f'={beta_vals[i]}')
+    ax[i].set_ylim(ylims)
+    #ax[i].title('Boxplot for the scenarios in each hour of the profit made by 1 MW offer in DA')
+plt.savefig('plots/V4/Step4_V4_alphabetaRES_spread', dpi=500, bbox_inches='tight')
+plt.show()
 
 print('##############\nScript is done\n##############')
 
@@ -413,14 +438,21 @@ plt.grid(True)
 plt.show()
 '''
 
-fig, ax = plt.subplots(2,1,figsize=(8,8))
-ax[0].boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)])
-ax[0].set_title('Boxplot for the scenarios in each hour of the profit made by 1 MW offer in DA')
+# fig, ax = plt.subplots(2,1,figsize=(8,8))
+# ax[0].boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)])
+# ax[0].set_title('Boxplot for the scenarios in each hour of the profit made by 1 MW offer in DA')
 
-ax[1].boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)])
-ax[1].set_title('Smaller y-range')
-ax[1].set_ylim((-5*10**2,1*10**3))
-ax[1].axhline(y=0, color='r')
+# ax[1].boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)])
+# ax[1].set_title('Smaller y-range')
+# ax[1].set_ylim((-5*10**2,1*10**3))
+# ax[1].axhline(y=0, color='r')
 
-plt.tight_layout()
+# plt.tight_layout()
+# plt.show()
+
+plt.boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in TT])
+plt.xlabel('Time of day-1 [h]')
+plt.ylabel('Revenue - Expected profit of 1 MW DA offer [€]')
+plt.savefig('plots/V4/Step4_V4_EP1MWDA_spread', dpi=500, bbox_inches='tight')
+plt.title('Boxplot for the scenarios in each hour of the profit made by 1 MW offer in DA')
 plt.show()

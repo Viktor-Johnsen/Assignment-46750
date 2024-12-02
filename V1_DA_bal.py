@@ -80,12 +80,13 @@ ax2.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
 
 lines, labels = ax.get_legend_handles_labels()
 lines2, labels2 = ax2.get_legend_handles_labels()
-ax.legend(lines + lines2, labels + labels2, loc=0)
 
 ax.set_xlabel('Hour of the day [h]')
 ax.set_ylabel('Price [DKK/MWh]')
 ax2.set_ylabel('DA offer [MW]')
 
+ax2.legend(lines + lines2, labels + labels2, loc=0)
+plt.savefig('plots/V1/Step4_V1_decisions', dpi=500, bbox_inches='tight')
 plt.title('Mean DA and balancing prices')
 plt.show()
 
