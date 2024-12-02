@@ -97,7 +97,7 @@ def solve_mas(W, T, pi, lambda_DA, lambda_B, lambda_RES, p_RT, beta, alpha):
             lambDA_arr[w,:] = lambDA
             lambRes_arr[w,:] = lambRES
             lambZeta_arr[w] = lambZeta
-        sub_obj = gp.quicksum(LB_list).getValue()
+        sub_obj = gp.quicksum(LB_list).getValue()/W
         #if v >= 1: They do this in class, but we didn't do this in large scale decomp I think. Can be added later
         model.addConstr((gamma <= sub_obj + gp.quicksum(lambDA_arr[w,t]*p_DA[t] + lambRes_arr[w,t]*p_RES[t] + lambZeta_arr[w]*zeta for w in WW for t in TT) ), name=f"c_BendersCut_{v}")
         model.optimize()
