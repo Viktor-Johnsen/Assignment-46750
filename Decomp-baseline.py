@@ -52,6 +52,7 @@ Eprofs_w = {f'{beta}': np.array(float) for beta in betas}
 for beta in betas: 
     #2 Mathematical model
     model = gp.Model("V1")
+    model.Params.OutputFlag = 0
     p_DA = model.addVars(T, lb=0, vtype=GRB.CONTINUOUS, name="p_DA")
     Delta_down = model.addMVar((W,T), lb=0, vtype=GRB.CONTINUOUS, name="Delta_down")
     # New variables
