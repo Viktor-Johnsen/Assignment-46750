@@ -114,6 +114,7 @@ if show_plots:
         ax.legend(loc=0)
         ax.set_xlabel('Hour of the day [h]')
         ax.set_ylabel('Power [MW]')
+        plt.savefig('plots/V2/Step4_V2_decisions', dpi=500, bbox_inches='tight')
         plt.title('Examining the offer decisions: p_RES and a_RES')
         plt.show()
 
@@ -178,7 +179,20 @@ if show_plots:
         ax.set_xlabel('Hour of the day [h]')
         ax.set_ylabel('Power [MW]')
         ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [€]')
-
+        plt.savefig('plots/V2/Step4_V2_decisions_expP1MWDA', dpi=500, bbox_inches='tight')
         plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
         plt.show()
+
+
+# Understanding the spread within our scenarios
+fig, ax = plt.subplots(2,2,figsize=(8,6))
+ax = ax.flatten()
+dict_params = {'$\lambda^{DA}$': lambda_DA, '$\lambda^{RES}$': lambda_RES, '$\lambda^{B}$':lambda_B, '$p^{RT}$':p_RT}
+for i,k in enumerate(dict_params.keys()):
+     ax[i].boxplot(dict_params[k])
+     ax[i].set_title(k)
+     ax[i].tick_params('x',rotation=45)
+plt.tight_layout()
+plt.show()
+
 print('##############\nScript is done\n##############')
