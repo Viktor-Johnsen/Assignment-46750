@@ -86,10 +86,10 @@ losses_ACT =  sum( sum(-a_RES_sol[w,:]*gamma_RES[w,:] * lambda_B[w,:] * pi[w] fo
 revenue_BAL = sum( sum(-Delta_down_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
 
 print('These are the expected revenue streams:')
-print(f'Day-ahead market: {revenue_DA:>42.2f} €')
-print(f'aFRR capacity market (down): {revenue_RES:>31.2f} €')
-print(f'Money spent to buy el. back: {losses_ACT:>31.2f} €')
-print(f'Revenue from balancing market: {revenue_BAL:>29.2f} €')
+print(f'Day-ahead market: {revenue_DA:>42.2f} DKK')
+print(f'aFRR capacity market (down): {revenue_RES:>31.2f} DKK')
+print(f'Money spent to buy el. back: {losses_ACT:>31.2f} DKK')
+print(f'Revenue from balancing market: {revenue_BAL:>29.2f} DKK')
 print(f'Summing these together yields the expected profit: {revenue_DA+revenue_RES+losses_ACT+revenue_BAL:.2f}={optimal_objective:.2f}')
 
 # Visualizations
@@ -137,7 +137,7 @@ if show_plots:
 
         ax.set_xlabel('Hour of the day [h]')
         ax.set_ylabel('Power [MW]')
-        ax2.set_ylabel('Price [€/MWh]')
+        ax2.set_ylabel('Price [DKK/MWh]')
         #ax3.set_ylabel('Wind power [MW]')
 
         plt.title('Which parameter is most important?')
@@ -178,7 +178,7 @@ if show_plots:
 
         ax.set_xlabel('Hour of the day [h]')
         ax.set_ylabel('Power [MW]')
-        ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [€]')
+        ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
         plt.savefig('plots/V2/Step4_V2_decisions_expP1MWDA', dpi=500, bbox_inches='tight')
         plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
         plt.show()

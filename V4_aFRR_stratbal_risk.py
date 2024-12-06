@@ -5,16 +5,31 @@ import numpy as np
 from IPython.display import display
 
 from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
+from load_data import train_scenarios, test_scenarios # 30, 5
 
 show_plots = True # Usedd to toggle between plotting and not plotting...
 
 T=24 #hours that we offer in
-W=30 #scenarios/days, our training set
+W=train_scenarios #scenarios/days, our training set
 
-p_RT = p_RT.values[:W*T].reshape(W,T)
-lambda_B = lambda_B.values[:W*T].reshape(W,T)
-lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
-lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
+testing = False
+if testing: 
+    W_train = W
+
+    W_test=test_scenarios
+
+    W = W_test
+    print(p_RT.shape)
+    print(lambda_B.shape)
+    p_RT = p_RT.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+    lambda_B = lambda_B.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+    lambda_DA = lambda_DA.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+    lambda_RES = lambda_RES.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+else:
+    p_RT = p_RT.values[:W*T].reshape(W,T)
+    lambda_B = lambda_B.values[:W*T].reshape(W,T)
+    lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
+    lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
 # gamma_RES = gamma_RES.values[:W*T].reshape(W,T)
 
 TT=np.arange(T)
@@ -27,8 +42,6 @@ obj = np.zeros(W)
 p_DAs = np.zeros((W,T))
 Deltas = np.zeros((W,T))
 
-#lambda_B[lambda_B <= 0] = 0 # Just used to check smth
-
 # gamma_RES = np.ones((W,T)) # Down-regulation activated in all hours
 # gamma_RES[lambda_B > lambda_DA]=0 # Down-regulation not activated in hours where balancing price is higher than DA price
 
@@ -40,6 +53,7 @@ beta = 0 # Level of risk-averseness of wind farm owner
 # initiate dictionaries used to save the results for different levels of risk
 # betas = np.round( np.linspace(0,1,11), 2)
 betas = np.round( np.linspace(0,0.8,9), 2) # Selected range
+betas = np.array([0.0,0.1,0.8])
 
 DA_offer = {f'{beta}': float for beta in betas}
 RES_offer = {f'{beta}': float for beta in betas}
@@ -50,6 +64,11 @@ Eprofs = {f'{beta}': float for beta in betas}
 Eprofs_w = {f'{beta}': np.array(float) for beta in betas}
 alpha_offer_RES = {f'{beta}': float for beta in betas}
 beta_offer_RES = {f'{beta}': float for beta in betas}
+
+revenue_DA_cvar = {f'{beta}':float for beta in betas}
+revenue_RES_cvar= {f'{beta}':float for beta in betas}
+losses_ACT_cvar ={f'{beta}':float for beta in betas}
+revenue_BAL_cvar = {f'{beta}':float for beta in betas}
 
 for beta in betas: 
     #2 Mathematical model
@@ -168,6 +187,10 @@ for beta in betas:
         alpha_offer_RES[f'{beta}'] = alpha_RES_sol
         beta_offer_RES[f'{beta}'] = beta_RES_sol
 
+        revenue_DA_cvar[f'{beta}'] = sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
+        revenue_RES_cvar[f'{beta}'] = sum( sum(p_RES_sol * lambda_RES[w,:] * pi[w] for w in WW) )
+        losses_ACT_cvar[f'{beta}'] =  sum( sum(-a_RES_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
+        revenue_BAL_cvar[f'{beta}']= sum( sum(-Delta_down_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
     else:
             print("Optimization was not successful")
 
@@ -184,10 +207,10 @@ losses_ACT =  sum( sum(-a_RES_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
 revenue_BAL = sum( sum(-Delta_down_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
 
 print('These are the expected revenue streams:')
-print(f'Day-ahead market: {revenue_DA:>42.2f} €')
-print(f'aFRR capacity market (down): {revenue_RES:>31.2f} €')
-print(f'Money spent to buy el. back: {losses_ACT:>31.2f} €')
-print(f'Revenue from balancing market: {revenue_BAL:>29.2f} €')
+print(f'Day-ahead market: {revenue_DA:>42.2f} DKK')
+print(f'aFRR capacity market (down): {revenue_RES:>31.2f} DKK')
+print(f'Money spent to buy el. back: {losses_ACT:>31.2f} DKK')
+print(f'Revenue from balancing market: {revenue_BAL:>29.2f} DKK')
 print(f'Summing these together yields the expected profit: {revenue_DA+revenue_RES+losses_ACT+revenue_BAL:.2f}={optimal_objective:.2f}')
 
 print(f'Such high balancing market offers allow us only to be activated this many times in each scenario: {np.sum( lambda_offer_RES <= lambda_B, axis=0)}')
@@ -266,7 +289,7 @@ if show_plots:
 
         ax.set_xlabel('Hour of the day [h]')
         ax.set_ylabel('Power [MW]')
-        ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [€]')
+        ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
 
         plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
         plt.show()'''
@@ -286,8 +309,8 @@ for i,beta_list in enumerate(beta_lists):
     points_to_plot = beta_list #[0.8,0.9]
     for beta in points_to_plot:
         ax[i].annotate(f'beta={beta}', (CVaR[f'{beta}'], Eprofs[f'{beta}']), fontsize=13)
-    ax[i].set_xlabel('CVaR [€]')
-    ax[i].set_ylabel('Expected profit [€]')
+    ax[i].set_xlabel('CVaR [DKK]')
+    ax[i].set_ylabel('Expected profit [DKK]')
     #plt.legend()
 plt.tight_layout()
 plt.savefig('plots/V4/Step4_V4_Markowitzs', dpi=500, bbox_inches='tight')
@@ -329,7 +352,7 @@ for k,beta_hist in enumerate(betas_hist):
                     )
         
     ax[k].legend()
-    ax[k].set_xlabel('Expected profit [€]')
+    ax[k].set_xlabel('Expected profit [DKK]')
     ax[k].set_ylabel(f'Frequency [out of {W}]')
     # ax[k].set_title('Profit distributions and VaR')
 plt.tight_layout()
@@ -366,7 +389,7 @@ lines2,labels2= ax2.get_legend_handles_labels()
 ### Used to explain the behaviour - can be removed when only showing the decisions
 ax3 = ax.twinx()
 ax3.plot([np.mean(lambda_DA[:,t]) + np.mean(lambda_RES[:,t]) - np.mean(lambda_B[:,t]) for t in range(T)], label='E[P] 1MW DA', color='k', alpha=.5)
-ax3.set_ylabel('Revenue - Expected profit of 1 MW DA offer [€]')
+ax3.set_ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
 ax3.axhline(y=0, alpha=1, color='k', linestyle='dashed')
 ax3.spines.right.set_position(("axes", 1.12))
 lines3,labels3 = ax3.get_legend_handles_labels()
@@ -393,7 +416,7 @@ ax2.tick_params(axis='y', colors=cols[1])
 ax2.spines['right'].set_color(cols[1])
 ax2.yaxis.label.set_color(cols[1])
 ax.set_ylabel(r' $ \alpha^{RES}_t [-]$')
-ax2.set_ylabel(r' $ \beta^{RES}_t$ [€/MWh]')
+ax2.set_ylabel(r' $ \beta^{RES}_t$ [DKK/MWh]')
 lines,labels = ax.get_legend_handles_labels()
 lines2,labels2= ax2.get_legend_handles_labels()
 plt.legend(lines+lines2,labels+labels2,loc=0)
@@ -409,7 +432,7 @@ colors=['tab:blue','tab:olive']
 for i in range(len(beta_vals)):
     ax[i].boxplot(lambda_offer_RES_dict[f'{beta_vals[i]}'])
     ax[i].set_xlabel('Time of day-1 [h]')
-    ax[i].set_ylabel('Strategic activation price offer [€/MWh] - ' + r'$\beta$' + f'={beta_vals[i]}')
+    ax[i].set_ylabel('Strategic activation price offer [DKK/MWh] - ' + r'$\beta$' + f'={beta_vals[i]}')
     ax[i].set_ylim(ylims)
     #ax[i].title('Boxplot for the scenarios in each hour of the profit made by 1 MW offer in DA')
 plt.savefig('plots/V4/Step4_V4_alphabetaRES_spread', dpi=500, bbox_inches='tight')
@@ -452,7 +475,54 @@ plt.show()
 
 plt.boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in TT])
 plt.xlabel('Time of day-1 [h]')
-plt.ylabel('Revenue - Expected profit of 1 MW DA offer [€]')
+plt.ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
 plt.savefig('plots/V4/Step4_V4_EP1MWDA_spread', dpi=500, bbox_inches='tight')
 plt.title('Boxplot for the scenarios in each hour of the profit made by 1 MW offer in DA')
 plt.show()
+
+for beta in betas:   
+    print(f"These are the expected revenue streams for {beta}:")
+    print(f"Day-ahead market: {revenue_DA_cvar[f'{beta}']:>42.2f} DKK")
+    print(f"aFRR capacity market (down): {revenue_RES_cvar[f'{beta}']:>31.2f} DKK")
+    print(f"Money spent to buy el. back: {losses_ACT_cvar[f'{beta}']:>31.2f} DKK")
+    print(f"Revenue from balancing market: {revenue_BAL_cvar[f'{beta}']:>29.2f} DKK")
+    print(f"Summing these together yields the expected profit: {revenue_DA_cvar[f'{beta}']+revenue_RES_cvar[f'{beta}']+losses_ACT_cvar[f'{beta}']+revenue_BAL_cvar[f'{beta}']:.2f}={Eprofs[f'{beta}']:.2f}")
+
+import matplotlib.cm as cm
+x_labels = ['Total expected profits', 'Day-ahead', 'aFRR capacity (down)', 'aFRR activation', 'Balancing']
+x = np.arange(len(x_labels))
+bar_width=0.1
+revenue_streams = [Eprofs, revenue_DA_cvar, revenue_RES_cvar, losses_ACT_cvar, revenue_BAL_cvar]
+colors = {betas[i]:cm.tab10.colors[i] for i in range(len(betas))}
+fig, ax = plt.subplots(figsize=(8,6))
+for i,beta in enumerate(betas):
+     offset = (i-len(betas) / 2) * bar_width + bar_width / 2
+     ax.bar(
+          x + offset,
+          [market[f'{beta}'] for market in revenue_streams],
+          width=bar_width,
+          color=colors[beta],
+          label=r'$\beta$='+f'{beta}'
+     )
+ax.set_xticks(x)
+ax.set_xticklabels(x_labels,rotation=15)
+ax.set_ylabel('Expected revenue [DKK]')
+ax.legend()
+ax.grid(axis='y',linestyle='--', alpha=.5)
+
+plt.tight_layout()
+plt.savefig('plots/V4/Step4_V4_expectedProfits',dpi=500, bbox_inches='tight')
+plt.show()
+
+# Save the solution to a .csv file
+import csv
+
+alpha_offer_RES_ = {k:alpha_offer_RES[k].tolist() for k in alpha_offer_RES.keys()}
+beta_offer_RES_ = {k:beta_offer_RES[k].tolist() for k in beta_offer_RES.keys()}
+
+df_V4_train = pd.DataFrame.from_dict([DA_offer,RES_offer,alpha_offer_RES_,beta_offer_RES_])
+df_V4_train = df_V4_train.T
+df_V4_train.columns = ['V4: '+var for var in ['DA', 'RES', 'alpha_RES', 'beta_RES']]
+
+# Don't overwrite it constantly - only do it when divided into training and test sets
+# df_V4_train.to_csv("plots/V4/V4_trained_model.csv", header=True)

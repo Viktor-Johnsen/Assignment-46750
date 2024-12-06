@@ -5,11 +5,12 @@ import numpy as np
 from IPython.display import display
 
 from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
+from load_data import train_scenarios, test_scenarios # 30, 7
 
 show_plots = True # Usedd to toggle between plotting and not plotting...
 
 T=24 #hours that we offer in
-W=30 #scenarios/days, our training set
+W=train_scenarios #scenarios/days, our training set
 
 p_RT = p_RT.values[:W*T].reshape(W,T)
 lambda_B = lambda_B.values[:W*T].reshape(W,T)
@@ -27,13 +28,11 @@ obj = np.zeros(W)
 p_DAs = np.zeros((W,T))
 Deltas = np.zeros((W,T))
 
-#lambda_B[lambda_B <= 0] = 0 # Just used to check smth
-
 # gamma_RES = np.ones((W,T)) # Down-regulation activated in all hours
 # gamma_RES[lambda_B > lambda_DA]=0 # Down-regulation not activated in hours where balancing price is higher than DA price
 
 M = max( np.max(lambda_DA-lambda_B), abs(np.min(lambda_DA-lambda_B)) ) + 936 #np.max(lambda_DA-lambda_B)*7 # Used for McCormick relaxation
-lambda_offer_fix = 0#np.max(lambda_DA-lambda_B) # Only 1389.9 as opposed to 7458.3 above
+lambda_offer_fix = 0 #np.max(lambda_DA-lambda_B) # Only 1389.9 as opposed to 7458.3 above
 lambda_offer_RES = lambda_offer_fix
 
 alpha = 0.9 # Worried about the profits in the 10th percentile least favorable scenarios
@@ -41,7 +40,7 @@ beta = 0 # Level of risk-averseness of wind farm owner
 
 # initiate dictionaries used to save the results for different levels of risk
 # betas = np.round( np.linspace(0,1,11), 2)
-betas = np.array([0.0]) # np.round( np.linspace(0,0.8,9), 2) # Selected range
+betas = np.array([0.0,0.1,0.8]) # np.round( np.linspace(0,0.8,9), 2) # Selected range
 
 M_P90 = 1
 epsilon = 0.1 # Because, P90...
@@ -55,10 +54,14 @@ Eprofs = {f'{beta}': float for beta in betas}
 Eprofs_w = {f'{beta}': np.array(float) for beta in betas}
 
 epsilons = [0.0, 0.1, 1.0]
-Eprofs_p90 = {f'P{(1-epsilon)*100:.0f}': float for epsilon in epsilons}
-p_DA_sol_p90 = {f'P{(1-epsilon)*100:.0f}': [] for epsilon in epsilons}
-p_RES_sol_p90 = {f'P{(1-epsilon)*100:.0f}': [] for epsilon in epsilons}
+Eprofs_p90 = {f'P{(1-epsilon)*100:.0f}': {beta:float for beta in betas} for epsilon in epsilons}
+p_DA_sol_p90 = {f'P{(1-epsilon)*100:.0f}': {beta:[] for beta in betas} for epsilon in epsilons}
+p_RES_sol_p90 = {f'P{(1-epsilon)*100:.0f}': {beta:[] for beta in betas} for epsilon in epsilons}
 
+revenue_DA_p90 = {f'P{(1-epsilon)*100:.0f}': {beta:float for beta in betas} for epsilon in epsilons}
+revenue_RES_p90= {f'P{(1-epsilon)*100:.0f}': {beta:float for beta in betas} for epsilon in epsilons}
+losses_ACT_p90 ={f'P{(1-epsilon)*100:.0f}': {beta:float for beta in betas} for epsilon in epsilons}
+revenue_BAL_p90 = {f'P{(1-epsilon)*100:.0f}': {beta:float for beta in betas} for epsilon in epsilons}
 
 for epsilon in epsilons:
     for beta in betas:
@@ -174,28 +177,28 @@ for epsilon in epsilons:
 
             u_sol = np.array([[u[w,t].x for t in TT] for w in WW])
 
+            print(f'Saving the decisions for epsilon={epsilon} at beta={beta}')
+            p_DA_sol_p90[f'P{(1-epsilon)*100:.0f}'][beta] = p_DA_sol
+            p_RES_sol_p90[f'P{(1-epsilon)*100:.0f}'][beta] = p_RES_sol
+            Eprofs_p90[f'P{(1-epsilon)*100:.0f}'][beta] = Eprofs[f'{beta}']
+
+            # We save the expected profits and the decisions in DA and RES from the last beta run
+            revenue_DA_p90[f'P{(1-epsilon)*100:.0f}'][beta] = sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
+            revenue_RES_p90[f'P{(1-epsilon)*100:.0f}'][beta] = sum( sum(p_RES_sol * lambda_RES[w,:] * pi[w] for w in WW) )
+            losses_ACT_p90[f'P{(1-epsilon)*100:.0f}'][beta] =  sum( sum(-a_RES_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
+            revenue_BAL_p90[f'P{(1-epsilon)*100:.0f}'][beta]= sum( sum(-Delta_down_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
+
         else:
                 print("Optimization was not successful")
-    # We save the expected profits and the decisions in DA and RES from the last beta run
-    print(f'Saving the decisions for epsilon={epsilon} at beta={beta}')
-    p_DA_sol_p90[f'P{(1-epsilon)*100:.0f}'] = p_DA_sol
-    p_RES_sol_p90[f'P{(1-epsilon)*100:.0f}'] = p_RES_sol
-    Eprofs_p90[f'P{(1-epsilon)*100:.0f}'] = Eprofs[f'{beta}']
+    
 #model.printStats()
 #display(P_RT_w)
 # print("Expected profit (Optimal objective):", optimal_objective)
 # Where do we earn revenue?
-revenue_DA =  sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
-revenue_RES = sum( sum(p_RES_sol * lambda_RES[w,:] * pi[w] for w in WW) )
-losses_ACT =  sum( sum(-a_RES_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
-revenue_BAL = sum( sum(-Delta_down_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
-
-print('These are the expected revenue streams:')
-print(f'Day-ahead market: {revenue_DA:>42.2f} €')
-print(f'aFRR capacity market (down): {revenue_RES:>31.2f} €')
-print(f'Money spent to buy el. back: {losses_ACT:>31.2f} €')
-print(f'Revenue from balancing market: {revenue_BAL:>29.2f} €')
-print(f'Summing these together yields the expected profit: {revenue_DA+revenue_RES+losses_ACT+revenue_BAL:.2f}={optimal_objective:.2f}')
+# revenue_DA =  sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
+# revenue_RES = sum( sum(p_RES_sol * lambda_RES[w,:] * pi[w] for w in WW) )
+# losses_ACT =  sum( sum(-a_RES_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
+# revenue_BAL = sum( sum(-Delta_down_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
 
 print(f'Such high balancing market offers allow us only to be activated this many times in each scenario: {np.sum( lambda_offer_RES <= lambda_B, axis=0)}')
 print(f'Instead of simply: {np.sum( lambda_DA > lambda_B, axis=0)}')
@@ -234,7 +237,7 @@ if show_plots:
         ax.set_ylabel('Power [MW]')
         ax2.set_ylabel('Price ratio [-]')
 
-        plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
+        plt.title(f'Offers in DA and RES and the ratio between DA- and BAL-prices, beta={beta}, epsilon={epsilon}')
         plt.show()
 
 print('##############\nVISUALIZATION:\n##############')
@@ -248,8 +251,8 @@ for beta in betas:
 points_to_plot = betas #[0.8,0.9]
 for beta in points_to_plot:
     plt.annotate(f'beta={beta}', (CVaR[f'{beta}'], Eprofs[f'{beta}']))
-plt.xlabel('CVaR [€]')
-plt.ylabel('Expected profit [€]')
+plt.xlabel('CVaR [DKK]')
+plt.ylabel(f'Expected profit [DKK] - epsilon={epsilon}')
 #plt.legend()
 plt.show()
 
@@ -260,8 +263,8 @@ for beta in betas[1:]:
 points_to_plot = betas #[0.8,0.9]
 for beta in points_to_plot:
     plt.annotate(f'beta={beta}', (CVaR[f'{beta}'], Eprofs[f'{beta}']))
-plt.xlabel('CVaR [€]')
-plt.ylabel('Expected profit [€]')
+plt.xlabel('CVaR [DKK]')
+plt.ylabel('Expected profit [DKK]')
 #plt.legend()
 plt.show()
 '''
@@ -295,7 +298,7 @@ for i,beta in enumerate([0.0,0.1]):
                   )
 
 plt.legend()
-plt.xlabel('Profit [€]')
+plt.xlabel('Profit [DKK]')
 plt.ylabel(f'Frequency [out of {W}]')
 plt.title('Profit distributions and VaR')
 plt.show()
@@ -323,7 +326,7 @@ for i,beta in enumerate([0.1,0.8]):
                   )
       
 plt.legend()
-plt.xlabel('Profit [€]')
+plt.xlabel('Profit [DKK]')
 plt.ylabel(f'Frequency [out of {W}]')
 plt.title('Profit distributions and VaR')
 plt.show()
@@ -357,18 +360,76 @@ plt.legend(lines+lines2,labels+labels2,loc=0)
 plt.show()
 '''
 
+import matplotlib.cm as cm
+
 fig, ax = plt.subplots(figsize=(6,4))
-
-cols = ['tab:blue', 'tab:orange']
-markers=['*','x','s','*','p','+']
-
+cols = cm.tab10.colors #['tab:blue', 'tab:orange']
+# markers=['*','x','s']
+# linestyles=['dotted','dashed','solid']
+count=0
 for i,k in enumerate(p_DA_sol_p90.keys()):
-     ax.plot(p_DA_sol_p90[k], label=k+', DA', color=cols[0], alpha=1-.2*i, marker=markers[i])
-     ax.plot(p_RES_sol_p90[k], label=k+', RES', color=cols[1], alpha=.9-.2*i, marker=markers[i])
+     for beta in betas:
+        if (k, beta) in [('P100',0.0),
+                         ('P100',0.1),
+                         ('P90',0.0),
+                         ('P90',0.1)]: 
+            ax.plot(p_DA_sol_p90[k][beta], label=k+r':$\beta$'+f'={beta}'+', DA', linestyle='dashed', color=cols[count], alpha=1-.2*i)#, marker=markers[i])
+            ax.plot(p_RES_sol_p90[k][beta], label=k+r':$\beta$'+f'={beta}'+', RES', linestyle='dotted', color=cols[count], alpha=.9-.2*i)#, marker=markers[i])
+            count+=1
 
 ax.set_xlabel('Time of day [h]')
 ax.set_ylabel('Power offered [MW]')
-
 ax.legend(loc=0)
+plt.savefig('plots/V5/Step4_V5_decisions_betas_eps', dpi=500, bbox_inches='tight')
+plt.show()
+
+
+fig, ax = plt.subplots(figsize=(6,4))
+cols = cm.tab10.colors #['tab:blue', 'tab:orange']
+# markers=['*','x','s']
+linestyles=['dotted','dashed','solid']
+count=0
+beta_val = 0.0
+for i,k in enumerate(p_DA_sol_p90.keys()): 
+    ax.plot(p_DA_sol_p90[k][beta_val], label=k+', DA', linestyle=linestyles[i], color=cols[0], alpha=1-.2*i)#, marker=markers[i])
+    ax.plot(p_RES_sol_p90[k][beta_val], label=k+', RES', linestyle=linestyles[i], color=cols[1], alpha=.9-.2*i)#, marker=markers[i])
+
+ax.set_xlabel('Time of day [h]')
+ax.set_ylabel('Power offered [MW]')
+ax.legend(loc=0)
+plt.title(r'$\beta$'+f'={beta_val}')
+plt.savefig('plots/V5/Step4_V5_decisions_p90', dpi=500, bbox_inches='tight')
+plt.show()
+
 
 print('##############\nScript is done\n##############')
+
+# Understand why P^ gives PRES down
+# Understand effecf of beta and P90 together : alone beta lower DA and RES and P90 lowers only RES
+for key in [f'P{(1-epsilon)*100:.0f}' for epsilon in epsilons]:
+    for beta in betas:   
+        print(f'These are the expected revenue streams for {key,beta}:')
+        print(f'Day-ahead market: {revenue_DA_p90[key][beta]:>42.2f} DKK')
+        print(f'aFRR capacity market (down): {revenue_RES_p90[key][beta]:>31.2f} DKK')
+        print(f'Money spent to buy el. back: {losses_ACT_p90[key][beta]:>31.2f} DKK')
+        print(f'Revenue from balancing market: {revenue_BAL_p90[key][beta]:>29.2f} DKK')
+        print(f'Summing these together yields the expected profit: {revenue_DA_p90[key][beta]+revenue_RES_p90[key][beta]+losses_ACT_p90[key][beta]+revenue_BAL_p90[key][beta]:.2f}={Eprofs_p90[key][beta]:.2f}')
+
+print('CVaR and P90-interdepence:')
+for beta in betas[1:]:
+    print('P90, beta=',beta)
+    print(f"{Eprofs_p90['P90'][beta]-Eprofs_p90['P100'][0.0]:.2f}")
+    print(f"{(Eprofs_p90['P100'][beta]-Eprofs_p90['P100'][0.0]+Eprofs_p90['P90'][0.0]-Eprofs_p90['P100'][0.0]):.2f}")
+print('CVaR and P90-interdepence:')
+for key in list(Eprofs_p90.keys())[1:]:
+    print('0.1, P?=',key)
+    print(f"{Eprofs_p90[key][0.1]-Eprofs_p90['P100'][0.0]:.2f}")
+    print(f"{(Eprofs_p90['P100'][0.1]-Eprofs_p90['P100'][0.0]+Eprofs_p90[key][0.0]-Eprofs_p90['P100'][0.0]):.2f}")
+
+# Save the solution to a .csv file
+import csv
+df_V5_train = pd.DataFrame.from_dict([DA_offer,RES_offer])
+df_V5_train = df_V5_train.T
+df_V5_train.columns = ['V5: '+var for var in ['DA', 'RES']]
+# Don't overwrite it constantly - only do it when divided into training and test sets
+df_V5_train.to_csv("plots/V5/V5_trained_model.csv", header=True)

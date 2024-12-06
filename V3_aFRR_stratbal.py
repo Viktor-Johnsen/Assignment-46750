@@ -132,10 +132,10 @@ losses_ACT =  sum( sum(-a_RES_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
 revenue_BAL = sum( sum(-Delta_down_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
 
 print('These are the expected revenue streams:')
-print(f'Day-ahead market: {revenue_DA:>42.2f} €')
-print(f'aFRR capacity market (down): {revenue_RES:>31.2f} €')
-print(f'Money spent to buy el. back: {losses_ACT:>31.2f} €')
-print(f'Revenue from balancing market: {revenue_BAL:>29.2f} €')
+print(f'Day-ahead market: {revenue_DA:>42.2f} DKK')
+print(f'aFRR capacity market (down): {revenue_RES:>31.2f} DKK')
+print(f'Money spent to buy el. back: {losses_ACT:>31.2f} DKK')
+print(f'Revenue from balancing market: {revenue_BAL:>29.2f} DKK')
 print(f'Summing these together yields the expected profit: {revenue_DA+revenue_RES+losses_ACT+revenue_BAL:.2f}={optimal_objective:.2f}')
 
 print(f'Such high balancing market offers allow us only to be activated this many times in each scenario: {np.sum( np.transpose(np.array(lambda_offer_RES)) <= lambda_B, axis=0)}')
@@ -198,7 +198,7 @@ if show_plots:
 
         ax.set_xlabel('Hour of the day [h]')
         ax.set_ylabel('Power [MW]')
-        ax2.set_ylabel('Price [€/MWh]')
+        ax2.set_ylabel('Price [DKK/MWh]')
         #ax3.set_ylabel('Wind power [MW]')
 
         plt.title('Which parameter is most important?')
@@ -239,7 +239,7 @@ if show_plots:
 
         ax.set_xlabel('Hour of the day [h]')
         ax.set_ylabel('Power [MW]')
-        ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [€]')
+        ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
         
         plt.savefig('plots/V3/Step4_V3_decisions_expP1MWDA', dpi=500, bbox_inches='tight')
         plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
@@ -250,12 +250,12 @@ fig, ax = plt.subplots(2,1,figsize=(6,6))
 ax = ax.flatten()
 ax[0].boxplot(lambda_offer_RES)
 ax[0].set_xlabel('Time of day-1 [h]')
-ax[0].set_ylabel('Price [€/MWh]')
+ax[0].set_ylabel('Price [DKK/MWh]')
 ax[0].set_title('$\lambda^{offer}_t$ - Strategic activation offer prices')
 
 ax[1].boxplot(lambda_DA-lambda_B)
 ax[1].set_xlabel('Time of day-1 [h]')
-ax[1].set_ylabel('Price [€/MWh]')
+ax[1].set_ylabel('Price [DKK/MWh]')
 ax[1].set_title('$\lambda^{DA}_{\omega,t}-\lambda^{B}_{\omega,t}$ - Actual difference in prices')
 plt.tight_layout()
 plt.savefig('plots/V3/Step4_V3_lambda_offer_boxplot', dpi=500, bbox_inches='tight')

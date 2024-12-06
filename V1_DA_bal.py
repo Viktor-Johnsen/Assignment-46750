@@ -97,6 +97,6 @@ revenue_BAL = sum( sum(Delta_sol[w][:] * lambda_B[w,:] * pi[w] for w in WW) )
 
 print("Expected profit (Optimal objective):", optimal_objective)
 print('These are the expected revenue streams:')
-print(f'Day-ahead market: {revenue_DA:>42.2f} €')
-print(f'Revenue from balancing market: {revenue_BAL:>29.2f} €')
+print(f'Day-ahead market: {revenue_DA:>42.2f} DKK')
+print(f'Revenue from balancing market: {revenue_BAL:>29.2f} DKK')
 print(f'Summing these together yields the expected profit: {revenue_DA+revenue_BAL:.2f}={optimal_objective:.2f}')
