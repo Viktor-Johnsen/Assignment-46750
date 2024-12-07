@@ -12,11 +12,28 @@ show_plots = True # Usedd to toggle between plotting and not plotting...
 T=24 #hours that we offer in
 W=train_scenarios #scenarios/days, our training set
 
-p_RT = p_RT.values[:W*T].reshape(W,T)
-lambda_B = lambda_B.values[:W*T].reshape(W,T)
-lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
-lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
+testing = False
+
+if testing: 
+    W_train = W
+
+    W_test=test_scenarios
+
+    W = W_test
+    print(p_RT.shape)
+    print(lambda_B.shape)
+    p_RT = p_RT.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+    lambda_B = lambda_B.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+    lambda_DA = lambda_DA.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+    lambda_RES = lambda_RES.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+else:
+    p_RT = p_RT.values[:W*T].reshape(W,T)
+    lambda_B = lambda_B.values[:W*T].reshape(W,T)
+    lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
+    lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
 # gamma_RES = gamma_RES.values[:W*T].reshape(W,T)
+
+print('W,T=', W,T)
 
 TT=np.arange(T)
 WW=np.arange(W)
@@ -42,9 +59,13 @@ beta = 0 # Level of risk-averseness of wind farm owner
 # betas = np.round( np.linspace(0,1,11), 2)
 betas = np.array([0.0,0.1,0.8]) # np.round( np.linspace(0,0.8,9), 2) # Selected range
 
+if testing: # testing here
+    betas = np.array([0.0])
+
 M_P90 = 1
 epsilon = 0.1 # Because, P90...
 
+# Only used for the last epsilon in the list
 DA_offer = {f'{beta}': float for beta in betas}
 RES_offer = {f'{beta}': float for beta in betas}
 objs = {f'{beta}': float for beta in betas}
@@ -415,20 +436,24 @@ for key in [f'P{(1-epsilon)*100:.0f}' for epsilon in epsilons]:
         print(f'Revenue from balancing market: {revenue_BAL_p90[key][beta]:>29.2f} DKK')
         print(f'Summing these together yields the expected profit: {revenue_DA_p90[key][beta]+revenue_RES_p90[key][beta]+losses_ACT_p90[key][beta]+revenue_BAL_p90[key][beta]:.2f}={Eprofs_p90[key][beta]:.2f}')
 
-print('CVaR and P90-interdepence:')
-for beta in betas[1:]:
-    print('P90, beta=',beta)
-    print(f"{Eprofs_p90['P90'][beta]-Eprofs_p90['P100'][0.0]:.2f}")
-    print(f"{(Eprofs_p90['P100'][beta]-Eprofs_p90['P100'][0.0]+Eprofs_p90['P90'][0.0]-Eprofs_p90['P100'][0.0]):.2f}")
-print('CVaR and P90-interdepence:')
-for key in list(Eprofs_p90.keys())[1:]:
-    print('0.1, P?=',key)
-    print(f"{Eprofs_p90[key][0.1]-Eprofs_p90['P100'][0.0]:.2f}")
-    print(f"{(Eprofs_p90['P100'][0.1]-Eprofs_p90['P100'][0.0]+Eprofs_p90[key][0.0]-Eprofs_p90['P100'][0.0]):.2f}")
+if not testing: #testing here
+    print('CVaR and P90-interdepence:')
+    for beta in betas[1:]:
+        print('P90, beta=',beta)
+        print(f"{Eprofs_p90['P90'][beta]-Eprofs_p90['P100'][0.0]:.2f}")
+        print(f"{(Eprofs_p90['P100'][beta]-Eprofs_p90['P100'][0.0]+Eprofs_p90['P90'][0.0]-Eprofs_p90['P100'][0.0]):.2f}")
+    print('CVaR and P90-interdepence:')
+    for key in list(Eprofs_p90.keys())[1:]:
+        print('0.1, P?=',key)
+        print(f"{Eprofs_p90[key][0.1]-Eprofs_p90['P100'][0.0]:.2f}")
+        print(f"{(Eprofs_p90['P100'][0.1]-Eprofs_p90['P100'][0.0]+Eprofs_p90[key][0.0]-Eprofs_p90['P100'][0.0]):.2f}")
 
 # Save the solution to a .csv file
 import csv
-df_V5_train = pd.DataFrame.from_dict([DA_offer,RES_offer])
+df_V5_train = pd.DataFrame.from_dict([
+    [p_DA_sol_p90[k][0.0] for k in p_DA_sol_p90.keys()],
+    [p_RES_sol_p90[k][0.0] for k in p_RES_sol_p90.keys()]
+    ])
 df_V5_train = df_V5_train.T
 df_V5_train.columns = ['V5: '+var for var in ['DA', 'RES']]
 # Don't overwrite it constantly - only do it when divided into training and test sets

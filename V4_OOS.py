@@ -1,18 +1,38 @@
 
-# This file is used to test the solutions from V4 and V5 out-of-sample (OOS)
+# This file is used to test the solutions from V4 out-of-sample (OOS)
 
 import numpy as np
+import pandas as pd
 
 # First we define the functions used to calculate the profits in each scenrio
 
 from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
-from load_data import train_scenarios, test_scenarios # 30, 7
+from load_data import train_scenarios, test_scenarios # 30, 5
+
+testing = True
 
 T = 24
 
 W_train = train_scenarios
 W_test = test_scenarios
-W = W_train
+
+df_V4_train = pd.read_csv('plots/V4/V4_trained_model.csv')
+
+betas = df_V4_train['Unnamed: 0'].values
+betas = [0.0,0.1,0.8]
+
+if testing:
+    W = W_test
+    p_RT = p_RT.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+    lambda_B = lambda_B.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+    lambda_DA = lambda_DA.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+    lambda_RES = lambda_RES.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
+else:
+    W = W_train
+    p_RT = p_RT.values[:W*T].reshape(W,T)
+    lambda_B = lambda_B.values[:W*T].reshape(W,T)
+    lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
+    lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
 
 TT = range(T)
 WW = range(W)
@@ -52,7 +72,6 @@ def evaluate_V4(DA_offers, RES_offers, alpha_RES, beta_RES,
     return a_RES, Delta_down, lambda_offer_RES, Eprofs_w, revenue_DA_cvar, revenue_RES_cvar, losses_ACT_cvar, revenue_BAL_cvar
 
 
-import pandas as pd
 import matplotlib.pyplot as plt
 import ast 
 
@@ -61,25 +80,10 @@ import ast
 # The lists were saved as strings (easier to look at in the dataframe)
 # ast.literal_eval() is used to convert from '[]' to [].
 
-df_V4_train = pd.read_csv('plots/V4/V4_trained_model.csv')
-
-betas = df_V4_train['Unnamed: 0'].values
-betas = [0.0,0.1,0.8]
-
 DA_offers_dict = {f'{betas[i]}':ast.literal_eval(df_V4_train['V4: DA'].iloc[i]) for i in range(len(betas))}
 RES_offers_dict = {f'{betas[i]}':ast.literal_eval(df_V4_train['V4: RES'].iloc[i]) for i in range(len(betas))}
 alpha_RES_dict = {f'{betas[i]}':ast.literal_eval(df_V4_train['V4: alpha_RES'].iloc[i]) for i in range(len(betas))}
 beta_RES_dict = {f'{betas[i]}':ast.literal_eval(df_V4_train['V4: beta_RES'].iloc[i]) for i in range(len(betas))}
-
-# p_RT = p_RT.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
-# lambda_B = lambda_B.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
-# lambda_DA = lambda_DA.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
-# lambda_RES = lambda_RES.values[W_train*T:(W_train+W_test)*T].reshape(W_test,T)
-
-p_RT = p_RT.values[:W*T].reshape(W,T)
-lambda_B = lambda_B.values[:W*T].reshape(W,T)
-lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
-lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
 
 Eprofs_w_betas = {f'{beta:.1f}':[] for beta in betas}
 revenue_DA_dict = {f'{beta:.1f}':[] for beta in betas} 
@@ -111,6 +115,28 @@ for beta in betas:
     print(f"Revenue from balancing market: {revenue_BAL_dict[f'{beta}']:>29.2f} DKK")
     print(f"Summing these together yields the expected profit: {revenue_DA_dict[f'{beta}']+revenue_RES_dict[f'{beta}']+losses_ACT_dict[f'{beta}']+revenue_BAL_dict[f'{beta}']:.2f}={pi*sum(Eprofs_w_betas[f'{beta}']):.2f}")
 
-'''
-df_V5_train = pd.read_csv('plots/V5/V5_trained_model.csv')
-'''
+
+import matplotlib.cm as cm
+x_labels = [f'w={w}' for w in WW]
+x = np.arange(len(x_labels))
+bar_width=0.1
+colors = {betas[i]:cm.tab10.colors[i] for i in range(len(betas))}
+fig, ax = plt.subplots(figsize=(8,6))
+for i,beta in enumerate(betas):
+     offset = (i-len(betas) / 2) * bar_width + bar_width / 2
+     ax.bar(
+          x + offset,
+          [Eprofs_w_betas[f'{beta}'][w] for w in WW],
+          width=bar_width,
+          color=colors[beta],
+          label=r'$\beta$='+f'{beta}'
+     )
+ax.set_xticks(x)
+ax.set_xticklabels(x_labels,rotation=15)
+ax.set_ylabel('Realized revenue [DKK]')
+ax.legend()
+ax.grid(axis='y',linestyle='--', alpha=.5)
+
+plt.tight_layout()
+plt.savefig('plots/V4/Step4_V4_OOS',dpi=500, bbox_inches='tight')
+plt.show()

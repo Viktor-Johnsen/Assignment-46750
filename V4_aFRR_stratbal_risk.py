@@ -7,12 +7,13 @@ from IPython.display import display
 from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
 from load_data import train_scenarios, test_scenarios # 30, 5
 
-show_plots = True # Usedd to toggle between plotting and not plotting...
+show_plots = True # Used to toggle between plotting and not plotting...
 
 T=24 #hours that we offer in
 W=train_scenarios #scenarios/days, our training set
 
-testing = False
+testing = False # Used for OOS
+
 if testing: 
     W_train = W
 
@@ -32,6 +33,8 @@ else:
     lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
 # gamma_RES = gamma_RES.values[:W*T].reshape(W,T)
 
+print('W,T=', W,T)
+
 TT=np.arange(T)
 WW=np.arange(W)
 
@@ -45,7 +48,10 @@ Deltas = np.zeros((W,T))
 # gamma_RES = np.ones((W,T)) # Down-regulation activated in all hours
 # gamma_RES[lambda_B > lambda_DA]=0 # Down-regulation not activated in hours where balancing price is higher than DA price
 
-M = max( np.max(lambda_DA-lambda_B), abs(np.min(lambda_DA-lambda_B)) ) + 936 #np.max(lambda_DA-lambda_B)*7 # Used for McCormick relaxation
+if testing: # testing here
+    M= 4111
+else:
+    M = max( np.max(lambda_DA-lambda_B), abs(np.min(lambda_DA-lambda_B)) ) + 936 #np.max(lambda_DA-lambda_B)*7 # Used for McCormick relaxation
 
 alpha = 0.9 # Worried about the profits in the 10th percentile least favorable scenarios
 beta = 0 # Level of risk-averseness of wind farm owner
