@@ -59,7 +59,7 @@ beta = 0 # Level of risk-averseness of wind farm owner
 # initiate dictionaries used to save the results for different levels of risk
 # betas = np.round( np.linspace(0,1,11), 2)
 betas = np.round( np.linspace(0,0.8,9), 2) # Selected range
-betas = np.array([0.0,0.1,0.8])
+# betas = np.array([0.0,0.1,0.8])
 
 DA_offer = {f'{beta}': float for beta in betas}
 RES_offer = {f'{beta}': float for beta in betas}
@@ -366,40 +366,32 @@ plt.savefig('plots/V4/Step4_V4_profit_hists', dpi=500, bbox_inches='tight')
 plt.show()
 #####
 
+import matplotlib.cm as cm
+
+cols = cm.tab10.colors
 
 fig,ax = plt.subplots(figsize=(6,4),dpi=500)
-ax2=ax.twinx()
 
-cols = ['b', 'r']
-markers=['s','x','*','d','p','+']
+# cols = ['b', 'r']
+# cols2 = ['b', 'y', 'g']
+markers=['s','o','x','d','p','+']
 for i,beta in enumerate(betas[[0,1,-1]]):
-    ax.plot(TT, DA_offer[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[0])
-    ax2.plot(TT, RES_offer[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[1], alpha=.5)
+    ax.plot(TT, DA_offer[f'{beta}'], label=r'$\beta$'+f'={beta}', marker=markers[i], color=cols[i])
+    # ax.plot(TT, RES_offer[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols2[i], alpha=.5)
 
 ax.set_xlabel('Hour of the day [h]')
 
-ax2.spines['left'].set_color(cols[0])
-ax.tick_params(axis='y', colors=cols[0])
-ax.yaxis.label.set_color(cols[0])
-
-ax2.tick_params(axis='y', colors=cols[1])
-ax2.spines['right'].set_color(cols[1])
-ax2.yaxis.label.set_color(cols[1])
-
-ax.set_ylabel('DA offer $-$ Power [MW]')
-ax2.set_ylabel('RES offer $-$ Power [MW]')
+ax.set_ylabel('Offer (DA and RES) $-$ Power [MW]')
 
 lines,labels = ax.get_legend_handles_labels()
-lines2,labels2= ax2.get_legend_handles_labels()
 
 ### Used to explain the behaviour - can be removed when only showing the decisions
-ax3 = ax.twinx()
-ax3.plot([np.mean(lambda_DA[:,t]) + np.mean(lambda_RES[:,t]) - np.mean(lambda_B[:,t]) for t in range(T)], label='E[P] 1MW DA', color='k', alpha=.5)
-ax3.set_ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
-ax3.axhline(y=0, alpha=1, color='k', linestyle='dashed')
-ax3.spines.right.set_position(("axes", 1.12))
-lines3,labels3 = ax3.get_legend_handles_labels()
-plt.legend(lines+lines2+lines3,labels+labels2+labels3,loc=0)
+ax2=ax.twinx()
+ax2.plot([np.mean(lambda_DA[:,t]) + np.mean(lambda_RES[:,t]) - np.mean(lambda_B[:,t]) for t in range(T)], label='E[P] 1MW DA', linestyle='dashed', color=cols[7], alpha=1.0)
+ax2.set_ylabel('Expected profit of 1 MW DA over-offer [DKK]')
+ax2.axhline(y=0, alpha=.8, color=cols[7], linestyle='dotted')
+lines2,labels2 = ax2.get_legend_handles_labels()
+plt.legend(lines+lines2,labels+labels2,loc=0)
 ### 
 
 # plt.legend(lines+lines2,labels+labels2,loc=0)
@@ -408,8 +400,8 @@ plt.show()
 
 fig,ax = plt.subplots(figsize=(6,4),dpi=500)
 ax2=ax.twinx()
-cols = ['b', 'r']
-markers=['s','x','*','d','p','+']
+# cols = ['b', 'r']
+# markers=['s','x','*','d','p','+']
 for i,beta in enumerate(betas[[0,1,-1]]):
     ax.plot(TT, alpha_offer_RES[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[0])
     ax2.plot(TT, beta_offer_RES[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[1], alpha=.5)

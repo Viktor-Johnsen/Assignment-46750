@@ -34,7 +34,7 @@ lambda_RES = df_aFRR[df_aFRR['PriceArea']=='DK2']['aFRR_DownCapPriceDKK'] # aFRR
 #gamma_RES = (gamma_RES > 0).astype(int) # Makes the activation binary
 # "aFRR Downward regulation purchased (MW)" -- not used because we assume that they always buy
 
-print(df_spot['HourDK'].iloc[[0,-1]])
-print(df_balancing['HourDK'].iloc[[0,-1]])
-print(df_aFRR['HourDK'].iloc[[0,-1]])
-print(df_wind['HourDK'].iloc[[0,-1]])
+# print(df_spot['HourDK'].iloc[[0,-1]])
+# print(df_balancing['HourDK'].iloc[[0,-1]])
+# print(df_aFRR['HourDK'].iloc[[0,-1]])
+# print(df_wind['HourDK'].iloc[[0,-1]])
