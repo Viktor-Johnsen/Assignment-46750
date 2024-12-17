@@ -31,7 +31,6 @@ else:
     lambda_B = lambda_B.values[:W*T].reshape(W,T)
     lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
     lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
-# gamma_RES = gamma_RES.values[:W*T].reshape(W,T)
 
 print('W,T=', W,T)
 
@@ -44,9 +43,6 @@ P_nom = 1 # MW
 obj = np.zeros(W)
 p_DAs = np.zeros((W,T))
 Deltas = np.zeros((W,T))
-
-# gamma_RES = np.ones((W,T)) # Down-regulation activated in all hours
-# gamma_RES[lambda_B > lambda_DA]=0 # Down-regulation not activated in hours where balancing price is higher than DA price
 
 if testing: # testing here
     M= 4111
@@ -115,14 +111,11 @@ for beta in betas:
     # model.addConstrs((a_RES[w,t] >= p_RES[t] for w in WW for t in TT if lambda_RES_offer[w,t] <= lambda_DA[w,t]-lambda_B[w,t] and lambda_DA[w,t] > lambda_B[w,t]), name="c_Activation") # New  
         #Though this is not possible given that the strategic offer on the balancing activation price is a variable!
         #McCormick relaxation techniques are used instead:
-        # lambda_offer_RES === alpha_RES * ( (lambda_DA[w,t+1] if t<T-1 else lambda_DA[w,t])-lambda_DA[w,t]) + lambda_DA[w,t] + beta_RES
 
-    # model.addConstrs((lambda_offer_RES[w,t] - M*(1-g[w,t]) <= lambda_DA[w,t] - lambda_B[w,t] for w in WW for t in TT), name='c_McCormick_7a_1')
-    # model.addConstrs((lambda_DA[w,t] - lambda_B[w,t] <= lambda_offer_RES[w,t] + M*g[w,t] for w in WW for t in TT), name='c_McCormick_7a_2')
     model.addConstrs((alpha_RES[t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_RES[t] - M*(1-g[w,t]) <= lambda_DA[w,t] - lambda_B[w,t] for w in WW for t in TT), name='c_McCormick_7a_1')
     model.addConstrs((lambda_DA[w,t] - lambda_B[w,t] <= alpha_RES[t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_RES[t] + M*g[w,t] for w in WW for t in TT), name='c_McCormick_7a_2')
 
-    # WHAT ABOUT THE T[:-1]??? -> I just set it to 0 as of right now.
+    # difference in DA price for T[:-1] has been set to 0 as of right now.
 
     model.addConstrs((a_RES[w,t] <= (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) for w in WW for t in TT), name='c_McCormick_7b')
     model.addConstrs((a_RES[w,t] >= (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) for w in WW for t in TT), name='c_McCormick_7c')
@@ -155,19 +148,9 @@ for beta in betas:
         a_RES_sol = np.array( [[a_RES[w,t].x for t in TT] for w in WW] )
         eta_sol = [eta[w].x for w in WW]
 
-        # print(f'p_DA={p_DA_sol}')
-        # print()
-        # print(f'p_RES={p_RES_sol}')
-        # print()
-        # [print(Delta_down_sol[w,:].tolist()) for w in WW]
-        # print()
-        # [print(a_RES_sol[w,:].tolist()) for w in WW]
-        #lambda_offer_RES_sol = [[lambda_offer_RES[w,t].x for t in TT] for w in WW]
-        # print('We strategically offer the balancing activation price as: ', )
         g_sol = np.array([[g[w,t].x for t in TT] for w in WW])
         phi_sol = np.array([[phi[w,t].x for t in TT] for w in WW])
-        # alpha_RES_sol = np.array([[alpha_RES[w,t].x for t in TT] for w in WW])
-        # beta_RES_sol = np.array([[beta_RES[w,t].x for t in TT] for w in WW])
+        
         alpha_RES_sol = np.array([alpha_RES[t].x for t in TT])
         beta_RES_sol = np.array([beta_RES[t].x for t in TT])
         lambda_offer_RES = [[alpha_RES_sol[t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_RES_sol[t] for t in TT] for w in WW]
@@ -186,8 +169,7 @@ for beta in betas:
                             for w in WW]
         VaR[f'{beta}']=zeta.x
         CVaR[f'{beta}']=VaR[f'{beta}'] - 1/(1-alpha)*sum(pi[w] * eta_sol[w] for w in WW)
-        #print(f'Deltap=\n{deltap_sol[:10]}\n{deltap_sol[10:]}')
-        #print(f'zB=\n{zB_sol[:10]}\n{zB_sol[10:]}')
+        
         DA_offer[f'{beta}'] = p_DA_sol
         RES_offer[f'{beta}'] = p_RES_sol
         alpha_offer_RES[f'{beta}'] = alpha_RES_sol
@@ -202,9 +184,6 @@ for beta in betas:
 
 lambda_offer_RES_dict = {f'{beta}':[[alpha_offer_RES[f'{beta}'][t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_offer_RES[f'{beta}'][t] for w in WW] for t in TT] for beta in betas}
 
-#model.printStats()
-#display(P_RT_w)
-# print("Expected profit (Optimal objective):", optimal_objective)
 print("Strategic balancing offer: \n", lambda_offer_RES)
 # Where do we earn revenue?
 revenue_DA =  sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
@@ -231,7 +210,6 @@ print('These discrepancies between phi and a can be explained by the number of t
 print('In other words, changing the balancing activation offer price works, and the conditions are that there should be a need for down-regulation and the offer price should be smaller than or equal to that of the difference between DA and BAL:')
 print('This is the same as the number of times that we are activated (without equality), lambda_offer:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B > lambda_offer_RES), axis=0))
 print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
-#print('This is the same as the number of times that we are activated (with equality), lambda_OFFER:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B >= lambda_offer_RES), axis=0))
 print('Apart from a difference of \"1" in hour 9 for some reason')
 
 
@@ -239,27 +217,6 @@ print('Apart from a difference of \"1" in hour 9 for some reason')
 import matplotlib.pyplot as plt
 
 if show_plots:
-        '''fig, ax=plt.subplots(figsize=(6,4),dpi=500)
-        # p_RT.shape i 30 by 24 but for some reason it p_RT[t,:] is correct below and not p_RT[:,t]
-        for t in range(T): ax.plot(p_RT[t,:], label='$p^{RT}_{\omega,t}$' if t == 0 else None, alpha=0.5, color='tab:red')
-        ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
-        ax.plot(p_RES_sol, label='$p^{RES}_t$', alpha=.8, color='tab:purple')
-        ax.legend(loc=0)
-        ax.set_xlabel('Hour of the day [h]')
-        ax.set_ylabel('Power [MW]')
-        plt.title('Examining the offer decisions: p_RES and p_RT')
-        plt.show()'''
-
-        '''fig, ax=plt.subplots(figsize=(6,4),dpi=500)
-        for t in range(T): ax.plot(a_RES_sol[t,:], label='$a^{RES}_{\omega,t}$' if t == 0 else None, alpha=0.5, color='tab:red')
-        ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
-        ax.plot(p_RES_sol, label='$p^{RES}_t$', alpha=.8, color='tab:purple')
-        ax.legend(loc=0)
-        ax.set_xlabel('Hour of the day [h]')
-        ax.set_ylabel('Power [MW]')
-        plt.title('Examining the offer decisions: p_RES and a_RES')
-        plt.show()'''
-
         fig, ax=plt.subplots(figsize=(6,4),dpi=500)
         ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
         ax.plot(p_RES_sol, label='$p^{RES}_t$', alpha=.8, color='tab:purple')
@@ -280,30 +237,8 @@ if show_plots:
         plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
         plt.show()
 
-        '''fig, ax=plt.subplots(figsize=(6,4),dpi=500)
-        ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
-        ax.plot(p_RES_sol, label='$p^{RES}_t$', alpha=.8, color='tab:purple')
-        ax.plot([np.mean([p_RT[:,t]]) for t in range(T)], label='$\overline{p}^{RT}_t$', color='tab:red')
-
-        ax2 = ax.twinx()
-        ax2.plot([np.mean(lambda_DA[:,t]) + np.mean(lambda_RES[:,t]) - np.mean(lambda_B[:,t]) for t in range(T)], label='E[P] 1MW DA')
-        ax2.axhline(y=0, alpha=.5, color='black')
-
-        lines, labels = ax.get_legend_handles_labels()
-        lines2,labels2 = ax2.get_legend_handles_labels()
-        ax.legend(lines+lines2,labels+labels2,loc=5)
-
-        ax.set_xlabel('Hour of the day [h]')
-        ax.set_ylabel('Power [MW]')
-        ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
-
-        plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
-        plt.show()'''
-
 print('##############\nVISUALIZATION:\n##############')
 import matplotlib.pyplot as plt
-# import matplotlib as mpl
-# mpl.rcParams.update(mpl.rcParamsDefault)
 
 beta_lists=[betas,betas[1:]]
 
@@ -323,11 +258,6 @@ plt.savefig('plots/V4/Step4_V4_Markowitzs', dpi=500, bbox_inches='tight')
 plt.show()
 
 import seaborn as sns
-
-# plt.rc('text', usetex=True)
-# plt.rc('font', family='serif')
-
-#####
 betas_hist=[[0.0,0.1],[0.0,0.8]]
 fig, ax = plt.subplots(1,2, figsize=(10,4))
 ax=ax.flatten()
@@ -360,7 +290,6 @@ for k,beta_hist in enumerate(betas_hist):
     ax[k].legend()
     ax[k].set_xlabel('Expected profit [DKK]')
     ax[k].set_ylabel(f'Frequency [out of {W}]')
-    # ax[k].set_title('Profit distributions and VaR')
 plt.tight_layout()
 plt.savefig('plots/V4/Step4_V4_profit_hists', dpi=500, bbox_inches='tight')
 plt.show()
@@ -372,8 +301,6 @@ cols = cm.tab10.colors
 
 fig,ax = plt.subplots(figsize=(6,4),dpi=500)
 
-# cols = ['b', 'r']
-# cols2 = ['b', 'y', 'g']
 markers=['s','o','x','d','p','+']
 for i,beta in enumerate(betas[[0,1,-1]]):
     ax.plot(TT, DA_offer[f'{beta}'], label=r'$\beta$'+f'={beta}', marker=markers[i], color=cols[i])
@@ -449,27 +376,6 @@ for i,k in enumerate(dict_params.keys()):
 plt.tight_layout()
 plt.show()
 
-# Or simply all-in-one go:
-
-# np.median(np.array([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)]).reshape(T*W)) = 129
-# Since the median of the scenario-hour profits is only 129 and basically all points are close to 0 we can choose very low ylims
-'''
-plt.boxplot(np.array([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)]).reshape(T*W))
-plt.grid(True)
-plt.show()
-'''
-
-# fig, ax = plt.subplots(2,1,figsize=(8,8))
-# ax[0].boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)])
-# ax[0].set_title('Boxplot for the scenarios in each hour of the profit made by 1 MW offer in DA')
-
-# ax[1].boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in range(T)])
-# ax[1].set_title('Smaller y-range')
-# ax[1].set_ylim((-5*10**2,1*10**3))
-# ax[1].axhline(y=0, color='r')
-
-# plt.tight_layout()
-# plt.show()
 
 plt.boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in TT])
 plt.xlabel('Time of day-1 [h]')
@@ -523,4 +429,6 @@ df_V4_train = df_V4_train.T
 df_V4_train.columns = ['V4: '+var for var in ['DA', 'RES', 'alpha_RES', 'beta_RES']]
 
 # Don't overwrite it constantly - only do it when divided into training and test sets
-# df_V4_train.to_csv("plots/V4/V4_trained_model.csv", header=True)
+'''
+df_V4_train.to_csv("plots/V4/V4_trained_model.csv", header=True)
+'''

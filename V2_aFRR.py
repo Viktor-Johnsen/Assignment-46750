@@ -6,7 +6,7 @@ from IPython.display import display
 
 from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
 
-show_plots = True # Usedd to toggle between plotting and not plotting...
+show_plots = True # Used to toggle between plotting and not plotting...
 
 T=24 #hours that we offer in
 W=30 #scenarios/days, our training set
@@ -15,7 +15,6 @@ p_RT = p_RT.values[:W*T].reshape(W,T)
 lambda_B = lambda_B.values[:W*T].reshape(W,T)
 lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
 lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
-# gamma_RES = gamma_RES.values[:W*T].reshape(W,T)
 
 TT=np.arange(T)
 WW=np.arange(W)
@@ -26,8 +25,6 @@ P_nom = 1 # MW
 obj = np.zeros(W)
 p_DAs = np.zeros((W,T))
 Deltas = np.zeros((W,T))
-
-#lambda_B[lambda_B <= 0] = 0 # Just used to check smth
 
 gamma_RES = np.ones((W,T)) # Down-regulation activated in all hours
 gamma_RES[lambda_B >= lambda_DA]=0 # Down-regulation not activated in hours where balancing price is higher than DA price
@@ -64,18 +61,8 @@ if model.status == GRB.OPTIMAL:
         Delta_down_sol = np.array( [[Delta_down[w,t].x for t in TT] for w in WW] )
         p_RES_sol = [p_RES[t].x for t in TT]
         a_RES_sol = np.array( [[a_RES[w,t].x for t in TT] for w in WW] )
-
-        # print(f'p_DA={p_DA_sol}')
-        # print()
-        # print(f'p_RES={p_RES_sol}')
-        # print()
-        # [print(Delta_down_sol[w,:].tolist()) for w in WW]
-        # print()
-        # [print(a_RES_sol[w,:].tolist()) for w in WW]
 else:
         print("Optimization was not successful")
-#model.printStats()
-#display(P_RT_w)
 
 print("Expected profit (Optimal objective):", optimal_objective)
 
@@ -117,31 +104,6 @@ if show_plots:
         plt.savefig('plots/V2/Step4_V2_decisions', dpi=500, bbox_inches='tight')
         plt.title('Examining the offer decisions: p_RES and a_RES')
         plt.show()
-
-        '''fig, ax=plt.subplots(figsize=(6,4),dpi=500)
-        ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
-        ax.plot(p_RES_sol, label='$p^{RES}_t$', alpha=.8, color='tab:purple')
-        ax.plot([np.mean([p_RT[:,t]]) for t in range(T)], label='$\overline{p}^{RT}_t$', color='tab:red')
-        ax2 = ax.twinx()
-        ax2.plot([np.mean([lambda_DA[:,t]]) for t in range(T)], label='$\overline{\lambda}^{DA}_t$')
-        ax2.plot([np.mean([lambda_B[:,t]]) for t in range(T)], label='$\overline{\lambda}^{B}_t$')
-        # ax3 = ax.twinx()
-        # ax3.plot([np.mean([p_RT[:,t]]) for t in range(T)], label='$\overline{p}^{RT}_t$', color='tab:red')
-        # ax3.spines['right'].set_position(('axes',1.15))
-
-        lines, labels = ax.get_legend_handles_labels()
-        lines2,labels2 = ax2.get_legend_handles_labels()
-        #lines3, labels3 = ax3.get_legend_handles_labels()
-        #ax.legend(lines+lines2+lines3,labels+labels2+labels3,loc=5)
-        ax.legend(lines+lines2,labels+labels2,loc=5)
-
-        ax.set_xlabel('Hour of the day [h]')
-        ax.set_ylabel('Power [MW]')
-        ax2.set_ylabel('Price [DKK/MWh]')
-        #ax3.set_ylabel('Wind power [MW]')
-
-        plt.title('Which parameter is most important?')
-        plt.show()'''
 
         fig, ax=plt.subplots(figsize=(6,4),dpi=500)
         ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')

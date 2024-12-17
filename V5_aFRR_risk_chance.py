@@ -7,12 +7,12 @@ from IPython.display import display
 from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
 from load_data import train_scenarios, test_scenarios # 30, 7
 
-show_plots = True # Usedd to toggle between plotting and not plotting...
+show_plots = True # Used to toggle between plotting and not plotting...
 
 T=24 #hours that we offer in
 W=train_scenarios #scenarios/days, our training set
 
-testing = False
+testing = False # OOS testing on V5 was deemed uninteresting based on the justification provided in the report.
 
 if testing: 
     W_train = W
@@ -31,7 +31,6 @@ else:
     lambda_B = lambda_B.values[:W*T].reshape(W,T)
     lambda_DA = lambda_DA.values[:W*T].reshape(W,T)
     lambda_RES = lambda_RES.values[:W*T].reshape(W,T)
-# gamma_RES = gamma_RES.values[:W*T].reshape(W,T)
 
 print('W,T=', W,T)
 
@@ -63,7 +62,6 @@ if testing: # testing here
     betas = np.array([0.0])
 
 M_P90 = 1
-epsilon = 0.1 # Because, P90...
 
 # Only used for the last epsilon in the list
 DA_offer = {f'{beta}': float for beta in betas}
@@ -126,15 +124,12 @@ for epsilon in epsilons:
         # model.addConstrs((a_RES[w,t] >= p_RES[t] for w in WW for t in TT if lambda_RES_offer[w,t] <= lambda_DA[w,t]-lambda_B[w,t] and lambda_DA[w,t] > lambda_B[w,t]), name="c_Activation") # New  
             #Though this is not possible given that the strategic offer on the balancing activation price is a variable!
             #McCormick relaxation techniques are used instead:
-            # lambda_offer_RES === alpha_RES * ( (lambda_DA[w,t+1] if t<T-1 else lambda_DA[w,t])-lambda_DA[w,t]) + lambda_DA[w,t] + beta_RES
 
-        # model.addConstrs((lambda_offer_RES[w,t] - M*(1-g[w,t]) <= lambda_DA[w,t] - lambda_B[w,t] for w in WW for t in TT), name='c_McCormick_7a_1')
-        # model.addConstrs((lambda_DA[w,t] - lambda_B[w,t] <= lambda_offer_RES[w,t] + M*g[w,t] for w in WW for t in TT), name='c_McCormick_7a_2')
         model.addConstrs(( lambda_offer_fix - M*(1-g[w,t]) <= lambda_DA[w,t] - lambda_B[w,t] for w in WW for t in TT), name='c_McCormick_7a_1')
         model.addConstrs((lambda_DA[w,t] - lambda_B[w,t] <= lambda_offer_fix + M*g[w,t] for w in WW for t in TT), name='c_McCormick_7a_2')
 
-        # WHAT ABOUT THE T[:-1]??? -> I just set it to 0 as of right now.
-
+        # difference in DA price for T[:-1] has been set to 0 as of right now.
+        
         model.addConstrs((a_RES[w,t] <= (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) for w in WW for t in TT), name='c_McCormick_7b')
         # McCormick_7c is changed
         # model.addConstrs((a_RES[w,t] - (phi[w,t] if lambda_DA[w,t] > lambda_B[w,t] else 0) >= 0 for w in WW for t in TT), name='c_McCormick_7c')
@@ -175,10 +170,6 @@ for epsilon in epsilons:
 
             g_sol = np.array([[g[w,t].x for t in TT] for w in WW])
             phi_sol = np.array([[phi[w,t].x for t in TT] for w in WW])
-            # alpha_RES_sol = np.array([alpha_RES[t].x for t in TT])
-            # beta_RES_sol = np.array([beta_RES[t].x for t in TT])
-            # lambda_offer_RES = [[alpha_RES_sol[t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_RES_sol[t] for t in TT] for w in WW]
-            
 
             objs[f'{beta}']=optimal_objective
             Eprofs[f'{beta}']=  sum(pi[w]*
@@ -212,15 +203,6 @@ for epsilon in epsilons:
         else:
                 print("Optimization was not successful")
     
-#model.printStats()
-#display(P_RT_w)
-# print("Expected profit (Optimal objective):", optimal_objective)
-# Where do we earn revenue?
-# revenue_DA =  sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
-# revenue_RES = sum( sum(p_RES_sol * lambda_RES[w,:] * pi[w] for w in WW) )
-# losses_ACT =  sum( sum(-a_RES_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
-# revenue_BAL = sum( sum(-Delta_down_sol[w,:] * lambda_B[w,:] * pi[w] for w in WW) )
-
 print(f'Such high balancing market offers allow us only to be activated this many times in each scenario: {np.sum( lambda_offer_RES <= lambda_B, axis=0)}')
 print(f'Instead of simply: {np.sum( lambda_DA > lambda_B, axis=0)}')
 
@@ -231,7 +213,6 @@ print('Discrepancies can be explained by the number of times where phi > a:\n', 
 print('These discrepancies between phi and a can be explained by the number of times where g=1 but there is no need for down-regulation, phi-condtional\n', np.sum( (phi_sol > 0) * (lambda_DA <= lambda_B), axis=0))
 
 print('In other words, changing the balancing activation offer price works, and the conditions are that there should be a need for down-regulation and the offer price should be smaller than or equal to that of the difference between DA and BAL:')
-#print('This is the same as the number of times that we are activated (without equality), lambda_offer:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B > lambda_offer_RES), axis=0))
 print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
 print('This is the same as the number of times that we are activated (with equality), lambda_OFFER:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B >= lambda_offer_RES), axis=0))
 print('Apart from a difference of \"1" in hour 9 for some reason')
@@ -277,110 +258,8 @@ plt.ylabel(f'Expected profit [DKK] - epsilon={epsilon}')
 #plt.legend()
 plt.show()
 
-''' # RISK - requires more than 1 beta-point
-fig = plt.figure(figsize=(6,4),dpi=500)
-for beta in betas[1:]:
-    plt.scatter(CVaR[f'{beta}'], Eprofs[f'{beta}'])
-points_to_plot = betas #[0.8,0.9]
-for beta in points_to_plot:
-    plt.annotate(f'beta={beta}', (CVaR[f'{beta}'], Eprofs[f'{beta}']))
-plt.xlabel('CVaR [DKK]')
-plt.ylabel('Expected profit [DKK]')
-#plt.legend()
-plt.show()
-'''
 
 import seaborn as sns
-
-# plt.rc('text', usetex=True)
-# plt.rc('font', family='serif')
-
-''' RISK - requires 0.0, 0.1, 0.8
-fig=plt.figure(figsize=(6,4),dpi=500)
-colors=['blue', 'orange']
-colors2=['purple', 'red']
-for i,beta in enumerate([0.0,0.1]):
-      sns.histplot(Eprofs_w[f'{beta}'],
-                   color=colors[i],
-                   kde=False,
-                   label=f'β={beta}',
-                   alpha=.7)
-      plt.axvline(VaR[f'{beta}'],
-                  color=colors2[i],
-                  label=f'VaR, β={beta}',
-                  linestyle='--',
-                  linewidth=4
-                  )
-      plt.axvline(Eprofs[f'{beta}'],
-                  color=colors2[i],
-                  label=f'Expected profit, β={beta}',
-                  linestyle='-',
-                  linewidth=4
-                  )
-
-plt.legend()
-plt.xlabel('Profit [DKK]')
-plt.ylabel(f'Frequency [out of {W}]')
-plt.title('Profit distributions and VaR')
-plt.show()
-
-fig=plt.figure(figsize=(6,4),dpi=500)
-colors=['blue', 'orange']
-colors2=['purple', 'red']
-for i,beta in enumerate([0.1,0.8]):
-      sns.histplot(Eprofs_w[f'{beta}'],
-                   color=colors[i],
-                   kde=False,
-                   label=f'β={beta}',
-                   alpha=.7)
-      plt.axvline(VaR[f'{beta}'],
-                  color=colors2[i],
-                  label=f'VaR, β={beta}',
-                  linestyle='--',
-                  linewidth=4
-                  )
-      plt.axvline(Eprofs[f'{beta}'],
-                  color=colors2[i],
-                  label=f'Expected profit, β={beta}',
-                  linestyle='-',
-                  linewidth=4
-                  )
-      
-plt.legend()
-plt.xlabel('Profit [DKK]')
-plt.ylabel(f'Frequency [out of {W}]')
-plt.title('Profit distributions and VaR')
-plt.show()
-
-fig,ax = plt.subplots(figsize=(6,4),dpi=500)
-ax2=ax.twinx()
-
-cols = ['b', 'r']
-
-markers=['s','x','*','d','p','+']
-for i,beta in enumerate(betas[[0,1,-1]]):
-    ax.plot(TT, DA_offer[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[0])
-    ax2.plot(TT, RES_offer[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[1], alpha=.5)
-
-ax.set_xlabel('Hour of the day [h]')
-
-ax2.spines['left'].set_color(cols[0])
-ax.tick_params(axis='y', colors=cols[0])
-ax.yaxis.label.set_color(cols[0])
-
-ax2.tick_params(axis='y', colors=cols[1])
-ax2.spines['right'].set_color(cols[1])
-ax2.yaxis.label.set_color(cols[1])
-
-ax.set_ylabel('DA offer $-$ Power [MW]')
-ax2.set_ylabel('RES offer $-$ Power [MW]')
-
-lines,labels = ax.get_legend_handles_labels()
-lines2,labels2= ax2.get_legend_handles_labels()
-plt.legend(lines+lines2,labels+labels2,loc=0)
-plt.show()
-'''
-
 import matplotlib.cm as cm
 
 fig, ax = plt.subplots(figsize=(6,4))
@@ -406,8 +285,7 @@ plt.show()
 
 
 fig, ax = plt.subplots(figsize=(6,4))
-cols = cm.tab10.colors #['tab:blue', 'tab:orange']
-# markers=['*','x','s']
+cols = cm.tab10.colors 
 linestyles=['dotted','dashed','solid']
 count=0
 beta_val = 0.0
@@ -422,11 +300,6 @@ plt.title(r'$\beta$'+f'={beta_val}')
 plt.savefig('plots/V5/Step4_V5_decisions_p90', dpi=500, bbox_inches='tight')
 plt.show()
 
-
-print('##############\nScript is done\n##############')
-
-# Understand why P^ gives PRES down
-# Understand effecf of beta and P90 together : alone beta lower DA and RES and P90 lowers only RES
 for key in [f'P{(1-epsilon)*100:.0f}' for epsilon in epsilons]:
     for beta in betas:   
         print(f'These are the expected revenue streams for {key,beta}:')
@@ -448,6 +321,7 @@ if not testing: #testing here
         print(f"{Eprofs_p90[key][0.1]-Eprofs_p90['P100'][0.0]:.2f}")
         print(f"{(Eprofs_p90['P100'][0.1]-Eprofs_p90['P100'][0.0]+Eprofs_p90[key][0.0]-Eprofs_p90['P100'][0.0]):.2f}")
 
+'''
 # Save the solution to a .csv file
 import csv
 df_V5_train = pd.DataFrame.from_dict([
@@ -458,3 +332,6 @@ df_V5_train = df_V5_train.T
 df_V5_train.columns = ['V5: '+var for var in ['DA', 'RES']]
 # Don't overwrite it constantly - only do it when divided into training and test sets
 df_V5_train.to_csv("plots/V5/V5_trained_model.csv", header=True)
+'''
+
+print('##############\nScript is done\n##############')

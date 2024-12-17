@@ -53,8 +53,6 @@ if model.status == GRB.OPTIMAL:
         [print(np.array(Delta_sol[w][:]).tolist()) for w in WW]
 else:
         print("Optimization was not successful")
-#model.printStats()
-#display(P_RT_w)
 
 print(np.array(p_DA_sol)[[1,2]])
 t0=1
@@ -89,8 +87,6 @@ ax2.legend(lines + lines2, labels + labels2, loc=0)
 plt.savefig('plots/V1/Step4_V1_decisions', dpi=500, bbox_inches='tight')
 plt.title('Mean DA and balancing prices')
 plt.show()
-
-
 
 revenue_DA =  sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
 revenue_BAL = sum( sum(Delta_sol[w][:] * lambda_B[w,:] * pi[w] for w in WW) )
