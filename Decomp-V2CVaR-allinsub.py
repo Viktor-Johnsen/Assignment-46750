@@ -8,7 +8,7 @@ from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
 
 def solve_sub(p_DA, p_RT, p_RES, lambda_B, lambda_RES, lambda_DA,gamma_RES, pi, T, zeta, beta, alpha):
         # One subproblem per scenario
-        M = 10000000000
+        M = 1e12
 
         submodel = gp.Model("sub")
         submodel.Params.OutputFlag = 0 # Turn off output to console
@@ -108,7 +108,7 @@ def solve_mas(W, T, pi, p_RT, lambda_B, lambda_DA, lambda_RES, gamma_RES, P_nom,
     p_RES = model.addVars(T, lb=0, ub=P_nom,vtype=GRB.CONTINUOUS, name="p_RES")
     #gamma = model.addVar(lb=LB, ub=UB, vtype=GRB.CONTINUOUS, name="gamma")
     gamma = model.addVars(WW, lb=LB, ub=UB, vtype=GRB.CONTINUOUS, name="gamma")
-    zeta = model.addVar(lb=0000, ub=4000, vtype=GRB.CONTINUOUS, name="zeta")
+    zeta = model.addVar(lb=LB, ub=UB, vtype=GRB.CONTINUOUS, name="zeta")
 
     #model.setObjective(gamma, GRB.MAXIMIZE) # Benders objective
     model.setObjective(gp.quicksum(pi[w]*gamma[w] for w in WW) 
@@ -135,9 +135,9 @@ def solve_mas(W, T, pi, p_RT, lambda_B, lambda_DA, lambda_RES, gamma_RES, P_nom,
                 for w in WW:
                         model.addConstr(gamma[w] <= LB_arr[w,v] + 
                                         gp.quicksum(lambDA_arr[w,t,v]*(p_DA[t]-p_DA_val[t,v-1]) + 
-                                        lambRes_arr[w,t,v]*(p_RES[t]-p_RES_val[t,v-1] +
-                                        lambzeta_arr[w,v]*(zeta-zeta_val[v-1])) 
-                                        for t in TT))
+                                        lambRes_arr[w,t,v]*(p_RES[t]-p_RES_val[t,v-1])  
+                                        for t in TT) +
+                                        lambzeta_arr[w,v]*(zeta-zeta_val[v-1]))
                 #model.addConstr(gamma <= gp.quicksum(pi[w]*LB_arr[w,v] for w in WW) + 
                 #                gp.quicksum(lambDA_arr[w,t,v]*(p_DA[t]-p_DA_val[t,v-1]) + 
                 #                lambRes_arr[w,t,v]*(p_RES[t]-p_RES_val[t,v-1]) 
@@ -155,9 +155,9 @@ def solve_mas(W, T, pi, p_RT, lambda_B, lambda_DA, lambda_RES, gamma_RES, P_nom,
             zeta_val[v] = zeta.x
             #zeta_val[v] = zeta_sol
             #print(f"UB: {UB}, LB: {LB}")
-            #print(f"p_DA: {p_DA_val[:,v]}")
-            #print(f"p_RES: {p_RES_val[:,v]}")
-            print(zeta_val[v])
+            print(f"p_DA: {p_DA_val[:,v]}")
+            print(f"p_RES: {p_RES_val[:,v]}")
+            print(f"zeta: {zeta_val[v]}")
             print(f"lambdazeta: {lambzeta_arr[:,v]}")
             #print(f"lambdaDA: {lambDA_arr[:,:,v]}")
             #print(f"lambdaRES: {lambRes_arr[:,:,v]}")
