@@ -102,7 +102,7 @@ for beta in betas:
             )
 
 
-print(f'The mean profit over all the (OOS) scenarios for the V4 model is:')
+print(f'The mean profit over all the OOS scenarios for the V4 model is:')
 for beta in betas:
     print(f'for beta={beta:.1f} it is:')
     print(pi*sum(Eprofs_w_betas[f'{beta:.1f}']))
@@ -140,5 +140,24 @@ ax.grid(axis='y',linestyle='--', alpha=.5)
 plt.tight_layout()
 plt.savefig('plots/V4/Step4_V4_OOS',dpi=500, bbox_inches='tight')
 plt.show()
+# Plot lambda_offer_RES vs lambda_B for each beta
+fig, ax = plt.subplots(figsize=(8,6))
+for i, beta in enumerate(betas):
+    lambda_offer_RES = np.array([lambda_offer_RES[w] for w in WW])
+    lambda_B_values = np.array([lambda_B[w] for w in WW])
+    for t in TT:
+        ax.plot(lambda_offer_RES[:, t], lambda_B_values[:, t], 'o', label=f'beta={beta:.1f}, t={t}' if i == 0 else "")
 
-print('##############\nScript is done\n##############')
+# Plot the line lambda_B = lambda_offer_RES
+min_val = min(lambda_B_values.min(), lambda_offer_RES.min())
+max_val = max(lambda_B_values.max(), lambda_offer_RES.max())
+ax.plot([min_val, max_val], [min_val, max_val], 'r--', label='lambda_B = lambda_offer_RES')
+
+ax.set_xlabel('Lambda Offer RES')
+ax.set_ylabel('Lambda B')
+ax.set_xlim(right=2500)  # Restrict x axis to be max 2500
+ax.legend()
+ax.grid(True)
+plt.tight_layout()
+plt.savefig('plots/V4/Lambda_offer_RES_vs_Lambda_B', dpi=500, bbox_inches='tight')
+plt.show()

@@ -5,7 +5,9 @@ import numpy as np
 from IPython.display import display
 
 from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
-from load_data import train_scenarios, test_scenarios # 30, 5
+from load_data import train_scenarios, test_scenarios # 30, 7
+
+show_plots = True # Used to toggle between plotting and not plotting...
 
 T=24 #hours that we offer in
 W=train_scenarios #scenarios/days, our training set
@@ -54,7 +56,7 @@ beta = 0 # Level of risk-averseness of wind farm owner
 
 # initiate dictionaries used to save the results for different levels of risk
 # betas = np.round( np.linspace(0,1,11), 2)
-betas = np.array([0.0,0.1,0.8]) # np.round( np.linspace(0,0.8,9), 2) # Selected range
+betas = np.array([0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]) # np.round( np.linspace(0,0.8,9), 2) # Selected range
 
 if testing: # testing here
     betas = np.array([0.0])
@@ -200,32 +202,51 @@ for epsilon in epsilons:
 
         else:
                 print("Optimization was not successful")
+    
+print(f'Such high balancing market offers allow us only to be activated this many times in each scenario: {np.sum( lambda_offer_RES <= lambda_B, axis=0)}')
+print(f'Instead of simply: {np.sum( lambda_DA > lambda_B, axis=0)}')
 
-print_additional_statements = False
+print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
+print('This does not add up with the number of times that we enforce the activation, g:\n', np.sum( g_sol > 0, axis=0))
+print('Though the numbers for g match nicely with the auxiliary variable for activation, phi:\n', np.sum( phi_sol > 0, axis=0))
+print('Discrepancies can be explained by the number of times where phi > a:\n', np.sum( phi_sol > a_RES_sol, axis=0))
+print('These discrepancies between phi and a can be explained by the number of times where g=1 but there is no need for down-regulation, phi-condtional\n', np.sum( (phi_sol > 0) * (lambda_DA <= lambda_B), axis=0))
 
-if print_additional_statements:
-    print(f'Such high balancing market offers allow us only to be activated this many times in each scenario: {np.sum( lambda_offer_RES <= lambda_B, axis=0)}')
-    print(f'Instead of simply: {np.sum( lambda_DA > lambda_B, axis=0)}')
-
-    print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
-    print('This does not add up with the number of times that we enforce the activation, g:\n', np.sum( g_sol > 0, axis=0))
-    print('Though the numbers for g match nicely with the auxiliary variable for activation, phi:\n', np.sum( phi_sol > 0, axis=0))
-    print('Discrepancies can be explained by the number of times where phi > a:\n', np.sum( phi_sol > a_RES_sol, axis=0))
-    print('These discrepancies between phi and a can be explained by the number of times where g=1 but there is no need for down-regulation, phi-condtional\n', np.sum( (phi_sol > 0) * (lambda_DA <= lambda_B), axis=0))
-
-    print('In other words, changing the balancing activation offer price works, and the conditions are that there should be a need for down-regulation and the offer price should be smaller than or equal to that of the difference between DA and BAL:')
-    print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
-    print('This is the same as the number of times that we are activated (with equality), lambda_OFFER:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B >= lambda_offer_RES), axis=0))
-    print('Apart from a difference of \"1" in hour 9 for some reason')
+print('In other words, changing the balancing activation offer price works, and the conditions are that there should be a need for down-regulation and the offer price should be smaller than or equal to that of the difference between DA and BAL:')
+print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
+print('This is the same as the number of times that we are activated (with equality), lambda_OFFER:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B >= lambda_offer_RES), axis=0))
+print('Apart from a difference of \"1" in hour 9 for some reason')
 
 
 # Visualizations
 import matplotlib.pyplot as plt
+
+if show_plots:
+        fig, ax=plt.subplots(figsize=(6,4),dpi=500)
+        ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
+        ax.plot(p_RES_sol, label='$p^{RES}_t$', alpha=.8, color='tab:purple')
+        ax.plot([np.mean([p_RT[:,t]]) for t in range(T)], label='$\overline{p}^{RT}_t$', color='tab:red')
+
+        ax2 = ax.twinx()
+        ax2.plot([np.mean([lambda_DA[:,t]]) for t in range(T)] / np.array( [np.mean([lambda_B[:,t]]) for t in range(T)] ), label='$\overline{\lambda}^{DA}_t$ / $\overline{\lambda}^{B}_t$')
+        ax2.plot([np.mean([lambda_RES[:,t]]) for t in range(T)] / np.array( [np.mean([lambda_DA[:,t]]) for t in range(T)] ), label='$\overline{\lambda}^{RES}_t$ / $\overline{\lambda}^{DA}_t$')
+
+        lines, labels = ax.get_legend_handles_labels()
+        lines2,labels2 = ax2.get_legend_handles_labels()
+        ax.legend(lines+lines2,labels+labels2,loc=5)
+
+        ax.set_xlabel('Hour of the day [h]')
+        ax.set_ylabel('Power [MW]')
+        ax2.set_ylabel('Price ratio [-]')
+
+        plt.title(f'Offers in DA and RES and the ratio between DA- and BAL-prices, beta={beta}, epsilon={epsilon}')
+        plt.show()
+
 print('##############\nVISUALIZATION:\n##############')
 import matplotlib.pyplot as plt
+# import matplotlib as mpl
+# mpl.rcParams.update(mpl.rcParamsDefault)
 
-# Increase the number of betas for the plot below to be interesting and compare to the results from V4
-'''
 fig = plt.figure(figsize=(6,4),dpi=500)
 for beta in betas:
     plt.scatter(CVaR[f'{beta}'], Eprofs[f'{beta}'])
@@ -236,13 +257,15 @@ plt.xlabel('CVaR [DKK]')
 plt.ylabel(f'Expected profit [DKK] - epsilon={epsilon}')
 #plt.legend()
 plt.show()
-'''
+
 
 import seaborn as sns
 import matplotlib.cm as cm
 
 fig, ax = plt.subplots(figsize=(6,4))
-cols = cm.tab10.colors
+cols = cm.tab10.colors #['tab:blue', 'tab:orange']
+# markers=['*','x','s']
+# linestyles=['dotted','dashed','solid']
 count=0
 for i,k in enumerate(p_DA_sol_p90.keys()):
      for beta in betas:
@@ -260,6 +283,45 @@ ax.legend(loc=0)
 plt.savefig('plots/V5/Step4_V5_decisions_betas_eps', dpi=500, bbox_inches='tight')
 plt.show()
 
+
+# Plot for P100 values
+fig, ax = plt.subplots(figsize=(6,4))
+cols = cm.tab10.colors 
+linestyles=['dotted','solid','dashed']
+count=0
+for beta_val in [0.0, 0.1]:
+    for i,k in enumerate(p_DA_sol_p90.keys()): 
+        if 'P100' in k:
+            ax.plot(p_DA_sol_p90[k][beta_val], label=k+f', DA, beta={beta_val}', linestyle=linestyles[count], color=cols[count], alpha=1)
+            ax.plot(p_RES_sol_p90[k][beta_val], label=k+f', RES, beta={beta_val}', linestyle=linestyles[count], color=cols[count+1], alpha=1)
+            count += 2
+
+ax.set_xlabel('Time of day [h]')
+ax.set_ylabel('Power offered [MW]')
+ax.legend(loc=0)
+plt.title('P100')
+plt.savefig('plots/V5/Step4_V5_decisions_p100', dpi=500, bbox_inches='tight')
+plt.show()
+
+# Plot for P90 values
+fig, ax = plt.subplots(figsize=(6,4))
+cols = cm.tab10.colors 
+linestyles=['dotted','solid','dashed']
+count=0
+for beta_val in [0.0, 0.1]:
+    for i,k in enumerate(p_DA_sol_p90.keys()): 
+        if 'P90' in k:
+            ax.plot(p_DA_sol_p90[k][beta_val], label=k+f', DA, beta={beta_val}', linestyle=linestyles[count], color=cols[count], alpha=1)
+            ax.plot(p_RES_sol_p90[k][beta_val], label=k+f', RES, beta={beta_val}', linestyle=linestyles[count], color=cols[count+1], alpha=1)
+            count += 2
+
+ax.set_xlabel('Time of day [h]')
+ax.set_ylabel('Power offered [MW]')
+ax.legend(loc=0)
+plt.title('P90')
+plt.savefig('plots/V5/Step4_V5_decisions_p90', dpi=500, bbox_inches='tight')
+plt.show()
+
 for key in [f'P{(1-epsilon)*100:.0f}' for epsilon in epsilons]:
     for beta in betas:   
         print(f'These are the expected revenue streams for {key,beta}:')
@@ -269,7 +331,7 @@ for key in [f'P{(1-epsilon)*100:.0f}' for epsilon in epsilons]:
         print(f'Revenue from balancing market: {revenue_BAL_p90[key][beta]:>29.2f} DKK')
         print(f'Summing these together yields the expected profit: {revenue_DA_p90[key][beta]+revenue_RES_p90[key][beta]+losses_ACT_p90[key][beta]+revenue_BAL_p90[key][beta]:.2f}={Eprofs_p90[key][beta]:.2f}')
 
-if (not testing) and (print_additional_statements): 
+if not testing: #testing here
     print('CVaR and P90-interdepence:')
     for beta in betas[1:]:
         print('P90, beta=',beta)
@@ -281,4 +343,37 @@ if (not testing) and (print_additional_statements):
         print(f"{Eprofs_p90[key][0.1]-Eprofs_p90['P100'][0.0]:.2f}")
         print(f"{(Eprofs_p90['P100'][0.1]-Eprofs_p90['P100'][0.0]+Eprofs_p90[key][0.0]-Eprofs_p90['P100'][0.0]):.2f}")
 
+'''
+# Save the solution to a .csv file
+import csv
+df_V5_train = pd.DataFrame.from_dict([
+    [p_DA_sol_p90[k][0.0] for k in p_DA_sol_p90.keys()],
+    [p_RES_sol_p90[k][0.0] for k in p_RES_sol_p90.keys()]
+    ])
+df_V5_train = df_V5_train.T
+df_V5_train.columns = ['V5: '+var for var in ['DA', 'RES']]
+# Don't overwrite it constantly - only do it when divided into training and test sets
+df_V5_train.to_csv("plots/V5/V5_trained_model.csv", header=True)
+'''
+# Plot profits vs beta for different epsilons
+fig, ax = plt.subplots(figsize=(6,4), dpi=500)
+colors = cm.tab10.colors
+
+for i, epsilon in enumerate(epsilons):
+    profits = [Eprofs_p90[f'P{(1-epsilon)*100:.0f}'][beta] for beta in betas]
+    ax.scatter(betas, profits, color=colors[i], label=f'P{(1-epsilon)*100:.0f}')
+
+# Highlight specific points
+highlight_points = [(1.0, 0.0), (0.0, 0.0)]
+for epsilon, beta in highlight_points:
+    profit = Eprofs_p90[f'P{(1-epsilon)*100:.0f}'][beta]
+    color = 'green' if (epsilon, beta) == highlight_points[0] else 'blue'
+    ax.scatter(beta, profit, color=color, s=100, edgecolor='black', zorder=5)
+
+ax.set_xlabel('Beta')
+ax.set_ylabel('Expected Profit [DKK]')
+ax.legend(loc='best')
+plt.title('Expected Profit vs Beta for different activation requirements')
+plt.savefig('plots/V5/Step4_V5_profits_vs_beta_epsilons', dpi=500, bbox_inches='tight')
+plt.show()
 print('##############\nScript is done\n##############')
