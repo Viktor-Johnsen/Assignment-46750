@@ -102,7 +102,7 @@ for beta in betas:
             )
 
 
-print(f'The mean profit over all the OOS scenarios for the V4 model is:')
+print(f'The mean profit over all the (OOS) scenarios for the V4 model is:')
 for beta in betas:
     print(f'for beta={beta:.1f} it is:')
     print(pi*sum(Eprofs_w_betas[f'{beta:.1f}']))
@@ -140,3 +140,5 @@ ax.grid(axis='y',linestyle='--', alpha=.5)
 plt.tight_layout()
 plt.savefig('plots/V4/Step4_V4_OOS',dpi=500, bbox_inches='tight')
 plt.show()
+
+print('##############\nScript is done\n##############')

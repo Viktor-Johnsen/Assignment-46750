@@ -226,3 +226,5 @@ for w in WW:
         #print(obj)
         sum += obj
 optimal_objective_comparison = sum/W + beta*zeta
+
+print('##############\nScript is done\n##############')

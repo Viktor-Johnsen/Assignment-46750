@@ -83,6 +83,7 @@ print(f'Summing these together yields the expected profit: {revenue_DA+revenue_R
 import matplotlib.pyplot as plt
 
 if show_plots:
+        '''
         fig, ax=plt.subplots(figsize=(6,4),dpi=500)
         # p_RT.shape i 30 by 24 but for some reason it p_RT[t,:] is correct below and not p_RT[:,t]
         for t in range(T): ax.plot(p_RT[t,:], label='$p^{RT}_{\omega,t}$' if t == 0 else None, alpha=0.5, color='tab:red')
@@ -93,6 +94,7 @@ if show_plots:
         ax.set_ylabel('Power [MW]')
         plt.title('Examining the offer decisions: p_RES and p_RT')
         plt.show()
+        '''
 
         fig, ax=plt.subplots(figsize=(6,4),dpi=500)
         for t in range(T): ax.plot(a_RES_sol[t,:], label='$a^{RES}_{\omega,t}$' if t == 0 else None, alpha=0.5, color='tab:red')
@@ -104,7 +106,8 @@ if show_plots:
         plt.savefig('plots/V2/Step4_V2_decisions', dpi=500, bbox_inches='tight')
         plt.title('Examining the offer decisions: p_RES and a_RES')
         plt.show()
-
+        
+        '''
         fig, ax=plt.subplots(figsize=(6,4),dpi=500)
         ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
         ax.plot(p_RES_sol, label='$p^{RES}_t$', alpha=.8, color='tab:purple')
@@ -124,6 +127,7 @@ if show_plots:
 
         plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
         plt.show()
+        '''
 
         fig, ax=plt.subplots(figsize=(6,4),dpi=500)
         ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
@@ -141,12 +145,14 @@ if show_plots:
         ax.set_xlabel('Hour of the day [h]')
         ax.set_ylabel('Power [MW]')
         ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
+        plt.tight_layout()
         plt.savefig('plots/V2/Step4_V2_decisions_expP1MWDA', dpi=500, bbox_inches='tight')
         plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
         plt.show()
 
 
 # Understanding the spread within our scenarios
+'''
 fig, ax = plt.subplots(2,2,figsize=(8,6))
 ax = ax.flatten()
 dict_params = {'$\lambda^{DA}$': lambda_DA, '$\lambda^{RES}$': lambda_RES, '$\lambda^{B}$':lambda_B, '$p^{RT}$':p_RT}
@@ -156,5 +162,6 @@ for i,k in enumerate(dict_params.keys()):
      ax[i].tick_params('x',rotation=45)
 plt.tight_layout()
 plt.show()
+'''
 
 print('##############\nScript is done\n##############')

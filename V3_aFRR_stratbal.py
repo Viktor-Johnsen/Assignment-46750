@@ -99,7 +99,7 @@ if model.status == GRB.OPTIMAL:
 else:
         print("Optimization was not successful")
 
-print("Strategic balancing offer: \n", lambda_offer_RES)
+print("Strategic balancing price offers: \n", lambda_offer_RES)
 # Where do we earn revenue?
 revenue_DA =  sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
 revenue_RES = sum( sum(p_RES_sol * lambda_RES[w,:] * pi[w] for w in WW) )
@@ -113,25 +113,29 @@ print(f'Money spent to buy el. back: {losses_ACT:>31.2f} DKK')
 print(f'Revenue from balancing market: {revenue_BAL:>29.2f} DKK')
 print(f'Summing these together yields the expected profit: {revenue_DA+revenue_RES+losses_ACT+revenue_BAL:.2f}={optimal_objective:.2f}')
 
-print(f'Such high balancing market offers allow us only to be activated this many times in each scenario: {np.sum( np.transpose(np.array(lambda_offer_RES)) <= lambda_B, axis=0)}')
-print(f'Instead of simply: {np.sum( lambda_DA > lambda_B, axis=0)}')
+print_additional_information = False
 
-print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
-print('This does not add up with the number of times that we enforce the activation, g:\n', np.sum( g_sol > 0, axis=0))
-print('Though the numbers for g match nicely with the auxiliary variable for activation, phi:\n', np.sum( phi_sol > 0, axis=0))
-print('Discrepancies can be explained by the number of times where phi > a:\n', np.sum( phi_sol > a_RES_sol, axis=0))
-print('These discrepancies between phi and a can be explained by the number of times where g=1 but there is no need for down-regulation, phi-condtional\n', np.sum( (phi_sol > 0) * (lambda_DA <= lambda_B), axis=0))
+if print_additional_information:
+        print(f'Such high balancing market offers allow us only to be activated this many times in each scenario: {np.sum( np.transpose(np.array(lambda_offer_RES)) <= lambda_B, axis=0)}')
+        print(f'Instead of simply: {np.sum( lambda_DA > lambda_B, axis=0)}')
 
-print('In other words, changing the balancing activation offer price works, and the conditions are that there should be a need for down-regulation and the offer price should be smaller than or equal to that of the difference between DA and BAL:')
-print('This is the same as the number of times that we are activated (without equality), lambda_offer:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B > np.transpose(np.array(lambda_offer_RES))), axis=0))
-print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
-print('Apart from a difference of \"1" in hour 9 for some reason')
+        print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
+        print('This does not add up with the number of times that we enforce the activation, g:\n', np.sum( g_sol > 0, axis=0))
+        print('Though the numbers for g match nicely with the auxiliary variable for activation, phi:\n', np.sum( phi_sol > 0, axis=0))
+        print('Discrepancies can be explained by the number of times where phi > a:\n', np.sum( phi_sol > a_RES_sol, axis=0))
+        print('These discrepancies between phi and a can be explained by the number of times where g=1 but there is no need for down-regulation, phi-condtional\n', np.sum( (phi_sol > 0) * (lambda_DA <= lambda_B), axis=0))
+
+        print('In other words, changing the balancing activation offer price works, and the conditions are that there should be a need for down-regulation and the offer price should be smaller than or equal to that of the difference between DA and BAL:')
+        print('This is the same as the number of times that we are activated (without equality), lambda_offer:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B > np.transpose(np.array(lambda_offer_RES))), axis=0))
+        print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
+        print('Apart from a difference of \"1" in hour 9 for some reason')
 
 
 # Visualizations
 import matplotlib.pyplot as plt
 
 if show_plots:
+        '''
         fig, ax=plt.subplots(figsize=(6,4),dpi=500)
         # p_RT.shape i 30 by 24 but for some reason it p_RT[t,:] is correct below and not p_RT[:,t]
         for t in range(T): ax.plot(p_RT[t,:], label='$p^{RT}_{\omega,t}$' if t == 0 else None, alpha=0.5, color='tab:red')
@@ -172,6 +176,7 @@ if show_plots:
 
         plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
         plt.show()
+        '''
 
         fig, ax=plt.subplots(figsize=(6,4),dpi=500)
         ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
@@ -189,18 +194,17 @@ if show_plots:
         ax.set_xlabel('Hour of the day [h]')
         ax.set_ylabel('Power [MW]')
         ax2.set_ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
-        
+        plt.tight_layout()
         plt.savefig('plots/V3/Step4_V3_decisions_expP1MWDA', dpi=500, bbox_inches='tight')
         plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
         plt.show()
-print('##############\nScript is done\n##############')
 
 fig, ax = plt.subplots(2,1,figsize=(6,6))
 ax = ax.flatten()
 ax[0].boxplot(lambda_offer_RES)
 ax[0].set_xlabel('Time of day-1 [h]')
 ax[0].set_ylabel('Price [DKK/MWh]')
-ax[0].set_title('$\lambda^{offer}_t$ - Strategic activation offer prices')
+ax[0].set_title('$\lambda^{offer}_{\omega,t}$ - Strategic activation offer prices')
 
 ax[1].boxplot(lambda_DA-lambda_B)
 ax[1].set_xlabel('Time of day-1 [h]')
@@ -209,3 +213,5 @@ ax[1].set_title('$\lambda^{DA}_{\omega,t}-\lambda^{B}_{\omega,t}$ - Actual diffe
 plt.tight_layout()
 plt.savefig('plots/V3/Step4_V3_lambda_offer_boxplot', dpi=500, bbox_inches='tight')
 plt.show()
+
+print('##############\nScript is done\n##############')

@@ -75,6 +75,8 @@ if model.status == GRB.OPTIMAL:
         Delta_down_sol = np.array( [[Delta_down[w,t].x for t in TT] for w in WW] )
         p_RES_sol = [p_RES[t].x for t in TT]
         a_RES_sol = np.array( [[a_RES[w,t].x for t in TT] for w in WW] )
+        zeta_sol = zeta.x
+        eta_sol = [eta[w].x for w in WW]
 else:
         print("Optimization was not successful")
 
@@ -91,7 +93,7 @@ print(f'Day-ahead market: {revenue_DA:>42.2f} DKK')
 print(f'aFRR capacity market (down): {revenue_RES:>31.2f} DKK')
 print(f'Money spent to buy el. back: {losses_ACT:>31.2f} DKK')
 print(f'Revenue from balancing market: {revenue_BAL:>29.2f} DKK')
-print(f'Summing these together yields the expected profit: {revenue_DA+revenue_RES+losses_ACT+revenue_BAL:.2f}={optimal_objective:.2f}')
+print(f'Summing these together yields the expected profit: {revenue_DA+revenue_RES+losses_ACT+revenue_BAL:.2f}={1/(1-beta) * (optimal_objective-beta*(zeta_sol - 1/(1-alpha)*sum(pi[w]*eta_sol[w] for w in WW))):.2f}')
 
 # Visualizations
 import matplotlib.pyplot as plt

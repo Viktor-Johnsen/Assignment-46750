@@ -171,3 +171,5 @@ gamma_RES[lambda_B >= lambda_DA]=0 # Down-regulation not activated in hours wher
 
 # Solve the MAS
 obj, p_DAs, p_Res = solve_mas(W, T, pi, p_RT, lambda_B, lambda_DA, lambda_RES, gamma_RES, P_nom)
+
+print('##############\nScript is done\n##############')

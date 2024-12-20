@@ -7,8 +7,6 @@ from IPython.display import display
 from load_data import p_RT, lambda_DA, lambda_B, lambda_RES# , gamma_RES
 from load_data import train_scenarios, test_scenarios # 30, 5
 
-show_plots = True # Used to toggle between plotting and not plotting...
-
 T=24 #hours that we offer in
 W=train_scenarios #scenarios/days, our training set
 
@@ -184,7 +182,8 @@ for beta in betas:
 
 lambda_offer_RES_dict = {f'{beta}':[[alpha_offer_RES[f'{beta}'][t] * (lambda_DA[w,t+1]-lambda_DA[w,t] if t<T-1 else 0) + lambda_DA[w,t] + beta_offer_RES[f'{beta}'][t] for w in WW] for t in TT] for beta in betas}
 
-print("Strategic balancing offer: \n", lambda_offer_RES)
+# Prints below are relevant but crowd the prompt. If the reader is curious they may be uncommented.
+'''
 # Where do we earn revenue?
 revenue_DA =  sum( sum(p_DA_sol * lambda_DA[w,:] * pi[w] for w in WW) )
 revenue_RES = sum( sum(p_RES_sol * lambda_RES[w,:] * pi[w] for w in WW) )
@@ -211,31 +210,10 @@ print('In other words, changing the balancing activation offer price works, and 
 print('This is the same as the number of times that we are activated (without equality), lambda_offer:\n', np.sum( (lambda_DA > lambda_B) * (lambda_DA - lambda_B > lambda_offer_RES), axis=0))
 print('#activated in each hour, a:\n', np.sum( a_RES_sol > 0, axis=0))
 print('Apart from a difference of \"1" in hour 9 for some reason')
-
+'''
 
 # Visualizations
 import matplotlib.pyplot as plt
-
-if show_plots:
-        fig, ax=plt.subplots(figsize=(6,4),dpi=500)
-        ax.plot(p_DA_sol, label='$p^{DA}_t$', alpha=.8, color='tab:green')
-        ax.plot(p_RES_sol, label='$p^{RES}_t$', alpha=.8, color='tab:purple')
-        ax.plot([np.mean([p_RT[:,t]]) for t in range(T)], label='$\overline{p}^{RT}_t$', color='tab:red')
-
-        ax2 = ax.twinx()
-        ax2.plot([np.mean([lambda_DA[:,t]]) for t in range(T)] / np.array( [np.mean([lambda_B[:,t]]) for t in range(T)] ), label='$\overline{\lambda}^{DA}_t$ / $\overline{\lambda}^{B}_t$')
-        ax2.plot([np.mean([lambda_RES[:,t]]) for t in range(T)] / np.array( [np.mean([lambda_DA[:,t]]) for t in range(T)] ), label='$\overline{\lambda}^{RES}_t$ / $\overline{\lambda}^{DA}_t$')
-
-        lines, labels = ax.get_legend_handles_labels()
-        lines2,labels2 = ax2.get_legend_handles_labels()
-        ax.legend(lines+lines2,labels+labels2,loc=5)
-
-        ax.set_xlabel('Hour of the day [h]')
-        ax.set_ylabel('Power [MW]')
-        ax2.set_ylabel('Price ratio [-]')
-
-        plt.title('Offers in DA and RES and the ratio between DA- and BAL-prices')
-        plt.show()
 
 print('##############\nVISUALIZATION:\n##############')
 import matplotlib.pyplot as plt
@@ -319,16 +297,13 @@ ax2.set_ylabel('Expected profit of 1 MW DA over-offer [DKK]')
 ax2.axhline(y=0, alpha=.8, color=cols[7], linestyle='dotted')
 lines2,labels2 = ax2.get_legend_handles_labels()
 plt.legend(lines+lines2,labels+labels2,loc=0)
-### 
-
-# plt.legend(lines+lines2,labels+labels2,loc=0)
+plt.tight_layout()
 plt.savefig('plots/V4/Step4_V4_decisions', dpi=500, bbox_inches='tight')
 plt.show()
 
+
 fig,ax = plt.subplots(figsize=(6,4),dpi=500)
 ax2=ax.twinx()
-# cols = ['b', 'r']
-# markers=['s','x','*','d','p','+']
 for i,beta in enumerate(betas[[0,1,-1]]):
     ax.plot(TT, alpha_offer_RES[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[0])
     ax2.plot(TT, beta_offer_RES[f'{beta}'], label=f'beta={beta}', marker=markers[i], color=cols[1], alpha=.5)
@@ -345,11 +320,12 @@ ax2.set_ylabel(r' $ \beta^{RES}_t$ [DKK/MWh]')
 lines,labels = ax.get_legend_handles_labels()
 lines2,labels2= ax2.get_legend_handles_labels()
 plt.legend(lines+lines2,labels+labels2,loc=0)
+plt.tight_layout()
 plt.savefig('plots/V4/Step4_V4_decisions_alphabeta_RES', dpi=500, bbox_inches='tight')
 plt.show()
 
+'''
 # Looking at their boxplots
-
 fig, ax = plt.subplots(1,2,figsize=(14,5))
 beta_vals = [0.0,0.8]
 ylims = (-2000,8000)
@@ -363,8 +339,6 @@ for i in range(len(beta_vals)):
 plt.savefig('plots/V4/Step4_V4_alphabetaRES_spread', dpi=500, bbox_inches='tight')
 plt.show()
 
-print('##############\nScript is done\n##############')
-
 # Understanding the spread within our scenarios
 fig, ax = plt.subplots(2,2,figsize=(8,6))
 ax = ax.flatten()
@@ -375,11 +349,13 @@ for i,k in enumerate(dict_params.keys()):
      ax[i].tick_params('x',rotation=45)
 plt.tight_layout()
 plt.show()
+'''
 
 
 plt.boxplot([lambda_DA[:,t] + lambda_RES[:,t] - lambda_B[:,t] for t in TT])
 plt.xlabel('Time of day-1 [h]')
 plt.ylabel('Revenue - Expected profit of 1 MW DA offer [DKK]')
+plt.tight_layout()
 plt.savefig('plots/V4/Step4_V4_EP1MWDA_spread', dpi=500, bbox_inches='tight')
 plt.title('Boxplot for the scenarios in each hour of the profit made by 1 MW offer in DA')
 plt.show()
@@ -432,3 +408,4 @@ df_V4_train.columns = ['V4: '+var for var in ['DA', 'RES', 'alpha_RES', 'beta_RE
 '''
 df_V4_train.to_csv("plots/V4/V4_trained_model.csv", header=True)
 '''
+print('##############\nScript is done\n##############')

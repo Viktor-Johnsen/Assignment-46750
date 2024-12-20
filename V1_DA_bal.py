@@ -48,21 +48,9 @@ if model.status == GRB.OPTIMAL:
         print("Optimal objective:", optimal_objective)
         p_DA_sol = [p_DA[t].x for t in TT]
         Delta_sol = [[Delta[w,t].x for t in TT] for w in WW]
-        print(p_DA_sol)
-        print()
-        [print(np.array(Delta_sol[w][:]).tolist()) for w in WW]
 else:
         print("Optimization was not successful")
 
-print(np.array(p_DA_sol)[[1,2]])
-t0=1
-print(f'Average spot price in hour {t0} is {np.mean([lambda_DA[:,t0]]):.2f} DKK/MWh')
-print(f'Average balancing price in hour {t0} is {np.mean([lambda_B[:,t0]]):.2f} DKK/MWh')
-
-t0=2
-print(f'Average price in hour {t0} is {np.mean([lambda_DA[:,t0]]):.2f} DKK/MWh')
-print(f'Average balancing price in hour {t0} is {np.mean([lambda_B[:,t0]]):.2f} DKK/MWh')
-# Based on the expected DA v. Balancing price in a given hour, we choose to bid all-or-nothing in that hour
 
 print('In hours of non-negative balancing prices, there is balance between pRT and pDA & Delta because we want to max out on our available power:')
 print(sum(p_RT[w,t] for t in TT for w in WW if lambda_B[w,t] >= 0))
@@ -96,3 +84,5 @@ print('These are the expected revenue streams:')
 print(f'Day-ahead market: {revenue_DA:>42.2f} DKK')
 print(f'Revenue from balancing market: {revenue_BAL:>29.2f} DKK')
 print(f'Summing these together yields the expected profit: {revenue_DA+revenue_BAL:.2f}={optimal_objective:.2f}')
+
+print('##############\nScript is done\n##############')
